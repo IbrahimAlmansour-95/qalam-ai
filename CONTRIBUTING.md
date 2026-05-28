@@ -26,6 +26,17 @@ open build/Export/QalamAI.app
 - **No new top-level Scenes in SwiftUI App.** We use a plain `@main enum QalamAIMain` because SwiftUI `Settings` auto-opens an empty window on macOS Tahoe. Keep it that way.
 - **Persistence goes through `QalamDefaults.suite`,** never `UserDefaults.standard`. The standard suite isn't reliably bound to our bundle when launched outside LaunchServices.
 
+## Versioning — always bump
+
+Every change that ships **must** bump the version. There is one source of truth: `Constants.version` in `Qalam/App/Constants.swift`. The build scripts read it to stamp `Info.plist` and name the DMG, and `UpdateChecker` compares it to GitHub releases — so editing that one line is all it takes.
+
+Bump rule:
+
+- **Minor change** (fix, tweak, small feature) → bump the **patch**: `1.0.0` → `1.0.1`
+- **Major change** (significant feature or batch) → bump the **minor**: `1.0.x` → `1.1.0`
+
+Then tag the GitHub release to match (`v1.0.1`, `v1.1.0`) and attach the DMG, so the in-app updater offers it.
+
 ## Reporting bugs
 
 Open an issue with:

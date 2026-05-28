@@ -8,7 +8,9 @@ cd "$(dirname "$0")/.."
 
 APP_NAME="QalamAI"
 APP_PATH="./build/Export/QalamAI.app"
-DMG_NAME="QalamAI-1.0.0-arm64.dmg"
+VERSION=$(grep 'static let version' Qalam/App/Constants.swift | sed -E 's/.*"([^"]+)".*/\1/')
+VERSION=${VERSION:-1.0.0}
+DMG_NAME="QalamAI-${VERSION}-arm64.dmg"
 FINAL_DMG="./build/${DMG_NAME}"
 VOLUME_NAME="QalamAI"
 BG_SRC="scripts/dmg-resources/background.png"

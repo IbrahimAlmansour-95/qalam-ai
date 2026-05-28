@@ -173,6 +173,14 @@ fi
 echo "→ Writing Info.plist..."
 cp Qalam/Info.plist "$CONTENTS/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $APP_NAME" "$CONTENTS/Info.plist" 2>/dev/null || true
+# Stamp the version from the single source of truth (Constants.version) so the
+# bundle, Info.plist and DMG never drift.
+VERSION=$(grep 'static let version' Qalam/App/Constants.swift | sed -E 's/.*"([^"]+)".*/\1/')
+if [[ -n "$VERSION" ]]; then
+    echo "  version: $VERSION"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$CONTENTS/Info.plist" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$CONTENTS/Info.plist" 2>/dev/null || true
+fi
 
 echo "→ Writing PkgInfo..."
 printf 'APPL????' > "$CONTENTS/PkgInfo"

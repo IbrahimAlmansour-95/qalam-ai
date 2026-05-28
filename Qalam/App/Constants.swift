@@ -4,7 +4,11 @@ enum Constants {
     static let appName = "QalamAI"
     static let bundleID = "com.qalamai.app"
     static let developer = "Ibrahim Almansour"
-    static let version = "1.0.0"
+    /// Single source of truth for the app version. The build scripts read this
+    /// to stamp Info.plist and name the DMG, and UpdateChecker compares GitHub
+    /// releases against it. Bump rule: minor change → patch (1.0.0 → 1.0.1),
+    /// major change → minor (1.0.x → 1.1.0).
+    static let version = "1.1.0"
 
     /// Subdirectory under ~/Library/Application Support used for installer
     /// downloads, runtime state, etc.
