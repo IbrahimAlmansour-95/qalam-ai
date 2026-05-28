@@ -64,7 +64,7 @@ final class UserPreferences {
             Keys.activeModeID: WritingMode.neutral.id,
             Keys.autoCorrectEnabled: true,
             Keys.autoGrammarEnabled: false,
-            Keys.maxSuggestionWords: 3,
+            Keys.maxSuggestionWords: 5,
             // DO NOT register firstLaunchDate as a fallback — register's
             // value shifts every launch (it's a fresh Date()), which masks
             // the on-disk read with a non-zero in-memory default and the

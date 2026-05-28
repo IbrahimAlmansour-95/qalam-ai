@@ -114,22 +114,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///   3. System mouse position — least accurate but at least near where the
     ///      user is interacting (helps with Electron apps that don't expose
     ///      caret bounds).
+    /// Returns the (x, topY) where the ghost-text overlay's TOP-LEFT should
+    /// sit in AppKit screen coords. The overlay then positions itself so the
+    /// text's top aligns with the caret line's top — matching the typed text's
+    /// visual line so the suggestion looks inline.
     private static func overlayAnchor() -> CGPoint? {
         if let caret = AccessibilityMonitor.shared.caretFrame(), caret.width >= 0 {
-            // Anchor the ghost-text panel's bottom-left at the caret baseline,
-            // shifted one character-width to the right so it sits next to (not
-            // on top of) what the user just typed.
-            return CGPoint(x: caret.maxX + 1, y: caret.minY - 1)
+            // `caret.maxY` is the TOP of the caret line in AppKit (Y up).
+            // Place the overlay's TOP-LEFT there, just to the right of the
+            // caret's right edge.
+            return CGPoint(x: caret.maxX + 1, y: caret.maxY)
         }
         if let frame = AccessibilityMonitor.shared.focusedFrame() {
-            // The element has no caret bounds (Electron-style editors). Place
-            // near the top of the focused area — closer to first-line typing
-            // than the bottom-left fallback was.
-            return CGPoint(x: frame.minX + 8, y: frame.maxY - 28)
+            // No caret bounds (Cursor/VSCode/Electron). Place a hair below the
+            // top of the focused area — close to first-line typing.
+            return CGPoint(x: frame.minX + 8, y: frame.maxY - 4)
         }
         let mouse = NSEvent.mouseLocation
         guard mouse != .zero else { return nil }
-        return CGPoint(x: mouse.x + 14, y: mouse.y - 14)
+        return CGPoint(x: mouse.x + 14, y: mouse.y)
     }
 
     private static func hint(for suggestion: SuggestionResult?) -> GhostStyleHint {

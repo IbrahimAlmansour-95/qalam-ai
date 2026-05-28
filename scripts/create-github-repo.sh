@@ -5,7 +5,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-REPO_NAME="${1:-qalamai}"
+REPO_NAME="${1:-qalam-ai}"
 DESCRIPTION="${2:-QalamAI — free local-first AI autocomplete for macOS. Inline ghost text + Tab acceptance in every Mac app.}"
 
 echo "▶ Verifying gh auth..."

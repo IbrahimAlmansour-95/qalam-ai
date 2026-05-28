@@ -27,7 +27,7 @@ struct SuggestionResult: Sendable, Equatable {
     static func from(text: String,
                      context: String,
                      kind: SuggestionKind = .llm,
-                     maxWords: Int = 3) -> SuggestionResult {
+                     maxWords: Int = 5) -> SuggestionResult {
         var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // Strip surrounding quotes the model occasionally adds.
         cleaned = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: "\"'`"))
