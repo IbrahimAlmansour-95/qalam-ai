@@ -35,7 +35,7 @@ Bump rule:
 - **Minor change** (fix, tweak, small feature) → bump the **patch**: `1.0.0` → `1.0.1`
 - **Major change** (significant feature or batch) → bump the **minor**: `1.0.x` → `1.1.0`
 
-Then tag the GitHub release to match (`v1.0.1`, `v1.1.0`) and attach the DMG, so the in-app updater offers it.
+`bash scripts/ship.sh` then **automatically publishes** the DMG to a `vX.Y.Z` GitHub release (via `scripts/release.sh`) so the in-app updater offers it. It creates the release if missing, or replaces the DMG asset if it already exists. Set `NO_RELEASE=1` to build without publishing, or run `bash scripts/release.sh` on its own to (re)publish an already-built DMG. Requires `gh auth login`.
 
 ## Reporting bugs
 

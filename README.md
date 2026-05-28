@@ -124,7 +124,8 @@ Qalam/
 scripts/
   build.sh               swiftc + Ollama embed + lipo + ad-hoc codesign
   package-dmg.sh         create-dmg with branded background
-  ship.sh                build.sh + package-dmg.sh + checksum summary
+  ship.sh                build.sh + package-dmg.sh + checksum + GitHub release
+  release.sh             publish the current DMG to the matching vX.Y.Z release
   dmg-resources/         800×500 installer background (1× + 2×)
 ```
 
