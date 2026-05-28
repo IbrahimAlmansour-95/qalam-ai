@@ -423,6 +423,48 @@ enum Translations {
             .arabic:  "إلغاء"
         ],
 
+        // ━━━ Uninstall ━━━
+        .uninstallTitle: [
+            .english: "Uninstall QalamAI",
+            .arabic:  "إلغاء تثبيت QalamAI"
+        ],
+        .uninstallBody: [
+            .english: "Remove the app cleanly. You can keep your downloaded models and settings so reinstalling is instant — no re-download, no re-setup.",
+            .arabic:  "أزل التطبيق بنظافة. يمكنك الاحتفاظ بالنماذج المُنزّلة والإعدادات ليكون إعادة التثبيت فورياً — دون إعادة تنزيل أو إعداد."
+        ],
+        .uninstallKeepData: [
+            .english: "Remove app, keep models & settings",
+            .arabic:  "إزالة التطبيق مع الاحتفاظ بالنماذج والإعدادات"
+        ],
+        .uninstallKeepDataHelp: [
+            .english: "Moves QalamAI to the Trash but leaves your models and preferences in place.",
+            .arabic:  "ينقل QalamAI إلى سلة المهملات مع إبقاء النماذج والتفضيلات."
+        ],
+        .uninstallEverything: [
+            .english: "Remove everything",
+            .arabic:  "إزالة كل شيء"
+        ],
+        .uninstallEverythingHelp: [
+            .english: "Also trashes downloaded models and settings. This frees the most space.",
+            .arabic:  "يحذف أيضاً النماذج المُنزّلة والإعدادات إلى سلة المهملات. يوفّر أكبر مساحة."
+        ],
+        .uninstallReveal: [
+            .english: "Show my data in Finder",
+            .arabic:  "إظهار بياناتي في Finder"
+        ],
+        .uninstallConfirmKeep: [
+            .english: "Quit and move QalamAI to the Trash? Your models and settings will be kept.",
+            .arabic:  "الخروج ونقل QalamAI إلى سلة المهملات؟ سيتم الاحتفاظ بالنماذج والإعدادات."
+        ],
+        .uninstallConfirmAll: [
+            .english: "Quit and remove QalamAI, its models, and settings? Everything goes to the Trash (recoverable).",
+            .arabic:  "الخروج وإزالة QalamAI ونماذجه وإعداداته؟ يذهب كل شيء إلى سلة المهملات (قابل للاسترجاع)."
+        ],
+        .uninstallCancel: [
+            .english: "Cancel",
+            .arabic:  "إلغاء"
+        ],
+
         // ━━━ General tab ━━━
         .generalHeading: [
             .english: "General",

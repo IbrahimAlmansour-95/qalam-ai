@@ -37,3 +37,11 @@ echo "  Size:   $SIZE"
 echo "  SHA256: $(shasum -a 256 "$FINAL_DMG" | cut -d' ' -f1)"
 echo "  Built:  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "════════════════════════════════════════════════════════════════"
+
+# Always publish the DMG to a GitHub release matching the version. Best-effort:
+# skips cleanly when gh isn't authenticated or NO_RELEASE=1 is set.
+if [[ "${NO_RELEASE:-0}" != "1" ]]; then
+    echo
+    echo "▶ Publishing to GitHub releases…"
+    bash scripts/release.sh || echo "  (release step skipped — see message above)"
+fi
