@@ -235,6 +235,62 @@ final class AccessibilityMonitor {
         return CGRect(origin: origin, size: size)
     }
 
+    /// The visual style of the text at the caret — host font + color — so the
+    /// ghost overlay can render in the SAME typeface/size/color and read as
+    /// inline text rather than a pasted-on overlay. Falls back to sensible
+    /// defaults when the app doesn't expose attributed text.
+    struct CaretStyle: Sendable, Equatable {
+        var fontName: String?   // PostScript name, e.g. "Helvetica"
+        var pointSize: CGFloat  // resolved point size
+        var rgba: [CGFloat]?    // host text color components (sRGB), if known
+    }
+
+    func caretStyle() -> CaretStyle {
+        let fallback = CaretStyle(fontName: nil, pointSize: 14, rgba: nil)
+        let systemWide = AXUIElementCreateSystemWide()
+        var focused: AnyObject?
+        guard AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let elementUnwrapped = focused
+        else { return fallback }
+        let element = elementUnwrapped as! AXUIElement
+
+        // Resolve a 1-char range around the cursor to query its run attributes.
+        var rangeRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeRef) == .success,
+              let rangeValue = rangeRef
+        else { return fallback }
+        var sel = CFRange(location: 0, length: 0)
+        guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &sel) else { return fallback }
+
+        let loc = max(0, sel.location - 1)
+        var probe = CFRange(location: loc, length: 1)
+        guard let probeVal = AXValueCreate(.cfRange, &probe) else { return fallback }
+
+        var attrRef: AnyObject?
+        let err = AXUIElementCopyParameterizedAttributeValue(
+            element,
+            "AXAttributedStringForRange" as CFString,
+            probeVal,
+            &attrRef
+        )
+        guard err == .success, let attr = attrRef as? NSAttributedString, attr.length > 0 else {
+            return fallback
+        }
+
+        var style = fallback
+        let attrs = attr.attributes(at: 0, effectiveRange: nil)
+        if let font = attrs[.font] as? NSFont {
+            style.fontName = font.fontName
+            style.pointSize = font.pointSize
+        }
+        if let color = attrs[.foregroundColor] as? NSColor,
+           let srgb = color.usingColorSpace(.sRGB) {
+            style.rgba = [srgb.redComponent, srgb.greenComponent,
+                          srgb.blueComponent, srgb.alphaComponent]
+        }
+        return style
+    }
+
     /// Asks AX for the bounding rect of a text range. Returns the raw rect in
     /// AX coords (top-left origin) — caller is responsible for flipping.
     private func boundsForRange(_ range: CFRange, in element: AXUIElement) -> CGRect? {

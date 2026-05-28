@@ -94,7 +94,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         let hint = AppDelegate.hint(for: suggestion)
                         let point = AppDelegate.overlayAnchor()
                         if let point {
-                            GhostTextOverlayWindow.shared.update(text: text, hint: hint, screenPoint: point)
+                            let style = AccessibilityMonitor.shared.caretStyle()
+                            GhostTextOverlayWindow.shared.update(
+                                text: text, hint: hint, style: style, screenPoint: point)
                         } else {
                             GhostTextOverlayWindow.shared.hide()
                         }

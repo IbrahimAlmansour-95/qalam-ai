@@ -38,13 +38,17 @@ final class GhostTextOverlayWindow {
     /// coords (bottom-left origin). We translate it to a bottom-left frame
     /// internally. The SwiftUI text uses topLeading alignment, so the text's
     /// top edge matches the caret line's top — visually inline with typing.
-    func update(text: String, hint: GhostStyleHint = .completion, screenPoint: CGPoint) {
+    func update(text: String,
+                hint: GhostStyleHint = .completion,
+                style: AccessibilityMonitor.CaretStyle,
+                screenPoint: CGPoint) {
         if text.isEmpty {
             hide()
             return
         }
         viewModel.text = text
         viewModel.hint = hint
+        viewModel.style = style
         let size = hostingController.view.fittingSize
         let width = max(40, min(560, ceil(size.width) + 2))
         let height = max(16, ceil(size.height))
@@ -82,38 +86,47 @@ enum GhostStyleHint: Sendable {
 final class GhostTextViewModel: ObservableObject {
     @Published var text: String = ""
     @Published var hint: GhostStyleHint = .completion
+    @Published var style: AccessibilityMonitor.CaretStyle =
+        .init(fontName: nil, pointSize: 14, rgba: nil)
 }
 
 struct GhostTextView: View {
     @ObservedObject var model: GhostTextViewModel
 
     var body: some View {
-        // SF Pro at 14 pt blends with most app text (Mail, Notes, browsers,
-        // Cursor, etc.) much better than monospace — the goal is to feel like
-        // native predictive text, not a Terminal-style overlay.
-        //
-        // The frame(maxWidth/maxHeight) + alignment:.bottomLeading pins the
-        // text to the bottom of the NSPanel content view so its baseline
-        // sits at the caret baseline (the panel's bottom edge).
+        // Render in the HOST field's own font, size, and color (at reduced
+        // opacity) so the suggestion blends into the line like macOS's native
+        // QuickType, instead of a fixed overlay font that reads as separate.
         Text(model.text)
-            .font(.system(size: 14, weight: .regular))
+            .font(hostFont)
             .foregroundStyle(foreground)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: true)
-            // Top-leading: text's top edge sits at the panel's top, which is
-            // anchored at the caret line's top. Combined with matching font
-            // size (14 pt), this puts the ghost glyphs on the same baseline
-            // as what the user is typing.
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    /// Color only — no pill background, no icon. The overlay reads as inline
-    /// ghost text without obscuring what the user is actually typing.
+    private var hostFont: Font {
+        let size = model.style.pointSize
+        if let name = model.style.fontName, !name.isEmpty {
+            return Font.custom(name, fixedSize: size)
+        }
+        return .system(size: size, weight: .regular)
+    }
+
+    /// Use the host text color for completions (the most "inline" look), the
+    /// accent for snippet/emoji, success-green for corrections — all dimmed so
+    /// the ghost is clearly provisional.
     private var foreground: Color {
         switch model.hint {
-        case .completion:  return QColors.ghostText
-        case .snippet:     return QColors.accent.opacity(0.85)
-        case .spellingFix, .grammarFix: return QColors.success.opacity(0.85)
+        case .snippet:
+            return QColors.accent.opacity(0.85)
+        case .spellingFix, .grammarFix:
+            return QColors.success.opacity(0.85)
+        case .completion:
+            if let c = model.style.rgba, c.count == 4 {
+                return Color(.sRGB, red: c[0], green: c[1], blue: c[2], opacity: 0.45)
+            }
+            return QColors.ghostText
         }
     }
 }
