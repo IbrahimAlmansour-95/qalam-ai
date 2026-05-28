@@ -34,14 +34,16 @@ final class GhostTextOverlayWindow {
         self.panel = p
     }
 
-    /// `screenPoint` is the desired TOP-LEFT of the overlay in AppKit screen
-    /// coords (bottom-left origin). We translate it to a bottom-left frame
-    /// internally. The SwiftUI text uses topLeading alignment, so the text's
-    /// top edge matches the caret line's top — visually inline with typing.
+    /// `caret` is the validated caret rect in AppKit screen coords (bottom-left
+    /// origin). For LTR the overlay extends rightward from the caret's right
+    /// edge; for RTL (Arabic) it extends leftward from the caret's left edge,
+    /// so the ghost reads inline on the line the user is typing in either
+    /// direction.
     func update(text: String,
                 hint: GhostStyleHint = .completion,
                 style: AccessibilityMonitor.CaretStyle,
-                screenPoint: CGPoint) {
+                caret: CGRect,
+                isRTL: Bool) {
         if text.isEmpty {
             hide()
             return
@@ -49,13 +51,16 @@ final class GhostTextOverlayWindow {
         viewModel.text = text
         viewModel.hint = hint
         viewModel.style = style
+        viewModel.isRTL = isRTL
         let size = hostingController.view.fittingSize
         let width = max(40, min(560, ceil(size.width) + 2))
         let height = max(16, ceil(size.height))
-        // NSWindow frames are bottom-left origin. screenPoint is top-left, so
-        // subtract the height to get the bottom-left coordinate.
-        panel.setFrame(NSRect(x: screenPoint.x,
-                              y: screenPoint.y - height,
+        // Top of the caret line. NSWindow frames are bottom-left origin, so
+        // the panel's y is (lineTop - height).
+        let topY = caret.maxY
+        let x = isRTL ? (caret.minX - 1 - width) : (caret.maxX + 1)
+        panel.setFrame(NSRect(x: x,
+                              y: topY - height,
                               width: width,
                               height: height),
                        display: true)
@@ -88,6 +93,7 @@ final class GhostTextViewModel: ObservableObject {
     @Published var hint: GhostStyleHint = .completion
     @Published var style: AccessibilityMonitor.CaretStyle =
         .init(fontName: nil, pointSize: 14, rgba: nil)
+    @Published var isRTL: Bool = false
 }
 
 struct GhostTextView: View {
@@ -102,7 +108,9 @@ struct GhostTextView: View {
             .foregroundStyle(foreground)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: true)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity,
+                   alignment: model.isRTL ? .topTrailing : .topLeading)
+            .environment(\.layoutDirection, model.isRTL ? .rightToLeft : .leftToRight)
     }
 
     private var hostFont: Font {
