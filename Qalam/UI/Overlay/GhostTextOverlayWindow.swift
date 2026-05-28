@@ -126,15 +126,23 @@ struct GhostTextView: View {
     /// the ghost is clearly provisional.
     private var foreground: Color {
         switch model.hint {
-        case .snippet:
-            return QColors.accent.opacity(0.85)
-        case .spellingFix, .grammarFix:
-            return QColors.success.opacity(0.85)
         case .completion:
+            // Inline autocomplete: a dimmed version of the user's OWN text
+            // color so it reads as a continuation of the same line — exactly
+            // like macOS QuickType. Never accent/green.
             if let c = model.style.rgba, c.count == 4 {
-                return Color(.sRGB, red: c[0], green: c[1], blue: c[2], opacity: 0.45)
+                return Color(.sRGB, red: c[0], green: c[1], blue: c[2], opacity: 0.5)
             }
-            return QColors.ghostText
+            // Host color unknown — neutral gray that reads as faded text in
+            // both light and dark, not a branded color.
+            return Color.secondary.opacity(0.9)
+        case .snippet:
+            // Snippets/emoji are an explicit insertion, so a subtle accent is OK.
+            return QColors.accent.opacity(0.8)
+        case .spellingFix, .grammarFix:
+            // Corrections are deliberately distinct (they replace text), but
+            // muted so they don't shout.
+            return QColors.warning.opacity(0.9)
         }
     }
 }

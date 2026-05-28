@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum SettingsTab: String, CaseIterable, Identifiable, Hashable {
-    case general, models, modes, snippets, shortcuts, privacy
+    case general, models, modes, snippets, myInfo, shortcuts, privacy
 
     var id: String { rawValue }
 
@@ -12,6 +12,7 @@ enum SettingsTab: String, CaseIterable, Identifiable, Hashable {
         case .models:    return L.t(.tabModels)
         case .modes:     return L.t(.tabModes)
         case .snippets:  return L.t(.tabSnippets)
+        case .myInfo:    return L.t(.tabMyInfo)
         case .shortcuts: return L.t(.tabShortcuts)
         case .privacy:   return L.t(.tabPrivacy)
         }
@@ -23,6 +24,7 @@ enum SettingsTab: String, CaseIterable, Identifiable, Hashable {
         case .models:    return "cube.box"
         case .modes:     return "wand.and.stars"
         case .snippets:  return "text.bubble"
+        case .myInfo:    return "person.text.rectangle"
         case .shortcuts: return "keyboard"
         case .privacy:   return "hand.raised"
         }
@@ -108,6 +110,7 @@ struct SettingsView: View {
         case .models:    ModelsSettingsView()
         case .modes:     ModesSettingsView()
         case .snippets:  SnippetsSettingsView()
+        case .myInfo:    MyInfoSettingsView()
         case .shortcuts: ShortcutsSettingsView()
         case .privacy:   PrivacySettingsView()
         }

@@ -53,6 +53,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             KeystrokeInterceptor.shared.install()
         }
 
+        // Check GitHub for updates (opt-out in Settings).
+        UpdateChecker.shared.start()
+
         // First-run onboarding.
         if !UserPreferences.shared.hasCompletedOnboarding {
             AppState.shared.showOnboarding()

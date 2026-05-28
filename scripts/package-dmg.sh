@@ -58,4 +58,30 @@ echo "→ Building DMG with create-dmg..."
 echo "→ Verifying..."
 hdiutil verify "$FINAL_DMG" 2>&1 | tail -2
 
+# Notarize + staple when Apple Developer credentials are present. This makes
+# the DMG open on any Mac with no Gatekeeper warning and no Terminal dance.
+# Requires a paid Apple Developer account. Set:
+#   QALAM_NOTARY_APPLE_ID   = your Apple ID email
+#   QALAM_NOTARY_TEAM_ID    = your 10-char Team ID
+#   QALAM_NOTARY_PASSWORD   = an app-specific password (appleid.apple.com)
+# (and QALAM_SIGN_IDENTITY during build.sh so the app is Developer ID signed).
+if [[ -n "${QALAM_NOTARY_APPLE_ID:-}" && -n "${QALAM_NOTARY_TEAM_ID:-}" && -n "${QALAM_NOTARY_PASSWORD:-}" ]]; then
+    echo "→ Submitting to Apple notary service (this can take a few minutes)…"
+    if xcrun notarytool submit "$FINAL_DMG" \
+        --apple-id "$QALAM_NOTARY_APPLE_ID" \
+        --team-id "$QALAM_NOTARY_TEAM_ID" \
+        --password "$QALAM_NOTARY_PASSWORD" \
+        --wait; then
+        echo "→ Stapling notarization ticket…"
+        xcrun stapler staple "$FINAL_DMG" && echo "  ✓ stapled"
+        echo "→ Gatekeeper assessment:"
+        spctl -a -t open --context context:primary-signature -vv "$FINAL_DMG" 2>&1 | tail -3 || true
+    else
+        echo "  ✗ Notarization failed — DMG is signed but not notarized."
+    fi
+else
+    echo "ℹ︎ Skipping notarization (set QALAM_NOTARY_* env vars + QALAM_SIGN_IDENTITY to enable)."
+    echo "  Without it, recipients on other Macs must clear quarantine — see README."
+fi
+
 echo "✓ Done: $FINAL_DMG ($(du -h "$FINAL_DMG" | cut -f1))"

@@ -384,7 +384,8 @@ final class SuggestionEngine {
             textAfterCursor: context.textAfterCursor,
             surroundingContext: surrounding,
             clipboardContext: clipboardContext,
-            screenContext: screen
+            screenContext: screen,
+            personalInfo: PersonalInfoStore.shared.promptBlock()
         )
 
         isStreaming = true
@@ -472,11 +473,16 @@ final class SuggestionEngine {
         }
 
         let word = suggestion.words[0]
-        TextInjector.shared.injectWord(word, withTrailingSpace: true)
+        let remaining = Array(suggestion.words.dropFirst())
+        // Add the trailing space only on the LAST word of a multi-word
+        // suggestion (between words we always need the separator), and only
+        // when the user opted in.
+        let isLast = remaining.isEmpty
+        let trailingSpace = isLast ? UserPreferences.shared.spaceAfterAccept : true
+        TextInjector.shared.injectWord(word, withTrailingSpace: trailingSpace)
         Task { await UsageLogger.shared.recordAcceptedWord(word) }
         Task { await StyleContextBuffer.shared.append(word) }
 
-        let remaining = Array(suggestion.words.dropFirst())
         if remaining.isEmpty {
             currentSuggestion = nil
         } else {

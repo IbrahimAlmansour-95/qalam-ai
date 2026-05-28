@@ -4,6 +4,7 @@ struct MenuBarPopoverView: View {
     @State private var prefs = UserPreferences.shared
     @State private var modelManager = ModelManager.shared
     @State private var axMonitor = AccessibilityPermissionMonitor.shared
+    @State private var updater = UpdateChecker.shared
     @State private var l10n = LocalizationStore.shared
     @State private var statsSnapshot = UsageLogger.Snapshot(
         wordsCompletedToday: 0, keystrokesSaved: 0, suggestionsShown: 0
@@ -16,6 +17,10 @@ struct MenuBarPopoverView: View {
             VStack(alignment: .leading, spacing: 0) {
                 header
                 QDivider().padding(.horizontal, 0)
+                if let release = updater.available {
+                    updateBanner(release)
+                    QDivider().padding(.horizontal, 0)
+                }
                 if !axMonitor.isGranted {
                     accessibilityWarning
                     QDivider().padding(.horizontal, 0)
@@ -37,6 +42,29 @@ struct MenuBarPopoverView: View {
         .environment(\.layoutDirection, l10n.current.layoutDirection)
         .onAppear { startRefresh() }
         .onDisappear { stopRefresh() }
+    }
+
+    private func updateBanner(_ release: UpdateChecker.Release) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.down.circle.fill")
+                .foregroundStyle(QColors.accent)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(L.t(.updateAvailable))
+                    .font(QFonts.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(QColors.textPrimary)
+                Text("v\(release.version)")
+                    .font(QFonts.caption)
+                    .foregroundStyle(QColors.textSecondary)
+            }
+            Spacer()
+            QButton(title: L.t(.updateDownload), style: .primary, size: .small) {
+                UpdateChecker.shared.openDownload()
+            }
+        }
+        .padding(.horizontal, QSpacing.l)
+        .padding(.vertical, 8)
+        .background(QColors.accent.opacity(0.08))
     }
 
     private var accessibilityWarning: some View {

@@ -9,7 +9,8 @@ enum PromptBuilder {
                       textAfterCursor: String? = nil,
                       surroundingContext: String? = nil,
                       clipboardContext: String? = nil,
-                      screenContext: String? = nil) -> String {
+                      screenContext: String? = nil,
+                      personalInfo: String? = nil) -> String {
         let n = max(1, maxWords)
 
         // Target length nudge — get the model to actually USE the budget for
@@ -65,6 +66,13 @@ enum PromptBuilder {
         }
         if !mode.instruction.isEmpty && mode.id != WritingMode.neutral.id {
             parts.append("Mode: \(mode.name). \(mode.instruction)")
+        }
+        // The user's own details — use them to complete contextually (e.g.
+        // after "reach me at" or "my name is"), but never volunteer info the
+        // user isn't already heading toward.
+        if let info = personalInfo?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !info.isEmpty {
+            parts.append("About the user (use ONLY when they're clearly typing it, e.g. their name or contact details):\n\(info)")
         }
         let trimmedStyle = styleContext.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedStyle.isEmpty {
