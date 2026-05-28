@@ -84,6 +84,10 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     case onbOrPickAnother
     case onbDownloadAndStart
     case onbSkipForNow
+    case onbPersonalizeTitle
+    case onbPersonalizeBody
+    case onbPersonalizeName
+    case onbPersonalizeEmail
 
     // Settings tabs
     case settingsTitle
@@ -93,6 +97,22 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     case tabSnippets
     case tabShortcuts
     case tabPrivacy
+    case tabMyInfo
+    // My Info
+    case myInfoHeading
+    case myInfoSubheading
+    case myInfoPrivacy
+    case myInfoAddField
+    case myInfoLabelPlaceholder
+    case myInfoValuePlaceholder
+    // General extras
+    case generalSpaceAfterTab
+    case generalSpaceAfterTabHelp
+    case generalAutoUpdate
+    case generalAutoUpdateHelp
+    // Updater
+    case updateAvailable
+    case updateDownload
 
     // General tab
     case generalHeading
@@ -278,6 +298,16 @@ enum Translations {
             .english: "Skip for now",
             .arabic:  "تخطّي الآن"
         ],
+        .onbPersonalizeTitle: [
+            .english: "Make it yours",
+            .arabic:  "اجعله خاصاً بك"
+        ],
+        .onbPersonalizeBody: [
+            .english: "Add your details so QalamAI can complete them in context — like your email after \"reach me at\". Stays on your Mac.",
+            .arabic:  "أضف بياناتك ليُكملها QalamAI حسب السياق — مثل بريدك بعد «تواصل معي على». تبقى على جهازك."
+        ],
+        .onbPersonalizeName:  [.english: "Your name", .arabic: "اسمك"],
+        .onbPersonalizeEmail: [.english: "Your email", .arabic: "بريدك الإلكتروني"],
 
         // ━━━ Settings tabs ━━━
         .settingsTitle: [
@@ -290,6 +320,49 @@ enum Translations {
         .tabSnippets:  [.english: "Snippets",  .arabic: "المختصرات"],
         .tabShortcuts: [.english: "Shortcuts", .arabic: "اختصارات لوحة المفاتيح"],
         .tabPrivacy:   [.english: "Privacy",   .arabic: "الخصوصية"],
+        .tabMyInfo:    [.english: "My Info",   .arabic: "معلوماتي"],
+
+        // ━━━ My Info ━━━
+        .myInfoHeading:    [.english: "My Information", .arabic: "معلوماتي"],
+        .myInfoSubheading: [
+            .english: "Your details, so QalamAI can complete them when you type — e.g. \"reach me at\" → your email.",
+            .arabic:  "بياناتك، ليتمكّن QalamAI من إكمالها عند الكتابة — مثل «تواصل معي على» → بريدك."
+        ],
+        .myInfoPrivacy: [
+            .english: "Stored only on your Mac and fed straight to the on-device model. Never uploaded.",
+            .arabic:  "تُحفظ على جهازك فقط وتُمرّر مباشرة إلى النموذج المحلي. لا تُرفع أبداً."
+        ],
+        .myInfoAddField:        [.english: "Add field", .arabic: "إضافة حقل"],
+        .myInfoLabelPlaceholder:[.english: "Label (e.g. Email)", .arabic: "التسمية (مثل البريد)"],
+        .myInfoValuePlaceholder:[.english: "Value", .arabic: "القيمة"],
+
+        // ━━━ General extras ━━━
+        .generalSpaceAfterTab: [
+            .english: "Add a space after accepting",
+            .arabic:  "إضافة مسافة بعد القبول"
+        ],
+        .generalSpaceAfterTabHelp: [
+            .english: "When you press Tab, insert a trailing space after the accepted word.",
+            .arabic:  "عند الضغط على Tab، أضف مسافة بعد الكلمة المقبولة."
+        ],
+        .generalAutoUpdate: [
+            .english: "Automatic updates",
+            .arabic:  "التحديثات التلقائية"
+        ],
+        .generalAutoUpdateHelp: [
+            .english: "Check GitHub for new versions and notify you when one is available.",
+            .arabic:  "التحقق من GitHub بحثاً عن إصدارات جديدة وإعلامك عند توفّرها."
+        ],
+
+        // ━━━ Updater ━━━
+        .updateAvailable: [
+            .english: "Update available",
+            .arabic:  "يتوفّر تحديث"
+        ],
+        .updateDownload: [
+            .english: "Download",
+            .arabic:  "تنزيل"
+        ],
 
         // ━━━ General tab ━━━
         .generalHeading: [

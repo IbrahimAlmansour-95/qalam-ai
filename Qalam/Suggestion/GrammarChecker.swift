@@ -54,6 +54,16 @@ actor GrammarChecker {
         } ?? issues.first
         guard let chosen = nearCursor else { return nil }
 
+        // Distinguish "still typing a correct word" from "finished a wrong one":
+        // if the flagged token ends exactly at the cursor AND it's a valid
+        // prefix of real words (e.g. "hel" on the way to "hello"), don't
+        // correct it — let the completion path continue from it instead.
+        let chosenEnd = chosen.nsRange.location + chosen.nsRange.length
+        if chosenEnd == localCursor, chosen.kind == .spelling,
+           isValidPrefix(chosen.originalText, language: language(for: chosen.originalText)) {
+            return nil
+        }
+
         // Translate the window-relative range back to the input range.
         let global = NSRange(
             location: chosen.nsRange.location + windowStart,
@@ -184,6 +194,25 @@ actor GrammarChecker {
             }
         }
         return out
+    }
+
+    /// True if `word` is the start of one or more real dictionary words — i.e.
+    /// the user is mid-typing a valid word rather than having finished a wrong
+    /// one. Uses NSSpellChecker's completion engine.
+    private func isValidPrefix(_ word: String, language: String) -> Bool {
+        guard word.count >= 2 else { return true }   // too short to judge
+        let checker = NSSpellChecker.shared
+        let range = NSRange(location: 0, length: (word as NSString).length)
+        let completions = checker.completions(
+            forPartialWordRange: range,
+            in: word,
+            language: language,
+            inSpellDocumentWithTag: docTag
+        ) ?? []
+        // If any completion starts with the typed word (case-insensitive), the
+        // user is on a valid path.
+        let lower = word.lowercased()
+        return completions.contains { $0.lowercased().hasPrefix(lower) }
     }
 
     /// Returns true when the just-typed character is a sentence terminator.

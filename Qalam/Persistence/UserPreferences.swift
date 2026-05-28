@@ -78,6 +78,16 @@ final class UserPreferences {
         didSet { defaults.set(engine, forKey: Keys.engine) }
     }
 
+    /// Insert a trailing space after accepting a word with Tab.
+    var spaceAfterAccept: Bool {
+        didSet { defaults.set(spaceAfterAccept, forKey: Keys.spaceAfterAccept) }
+    }
+
+    /// Check GitHub for a newer release on launch + periodically.
+    var autoUpdateEnabled: Bool {
+        didSet { defaults.set(autoUpdateEnabled, forKey: Keys.autoUpdateEnabled) }
+    }
+
     private init() {
         defaults.register(defaults: [
             Keys.isEnabled: true,
@@ -96,6 +106,8 @@ final class UserPreferences {
             Keys.broaderContextEnabled: true,
             Keys.screenContextEnabled: false,
             Keys.engine: "ollama",
+            Keys.spaceAfterAccept: true,
+            Keys.autoUpdateEnabled: true,
             // DO NOT register firstLaunchDate as a fallback — register's
             // value shifts every launch (it's a fresh Date()), which masks
             // the on-disk read with a non-zero in-memory default and the
@@ -118,6 +130,8 @@ final class UserPreferences {
         self.broaderContextEnabled   = defaults.bool(forKey: Keys.broaderContextEnabled)
         self.screenContextEnabled    = defaults.bool(forKey: Keys.screenContextEnabled)
         self.engine                  = defaults.string(forKey: Keys.engine) ?? "ollama"
+        self.spaceAfterAccept        = defaults.bool(forKey: Keys.spaceAfterAccept)
+        self.autoUpdateEnabled       = defaults.bool(forKey: Keys.autoUpdateEnabled)
         // Persist firstLaunchDate explicitly on the very first run; didSet
         // doesn't fire during init.
         // `object(forKey:)` returns nil if no real value is stored — unlike
@@ -150,5 +164,7 @@ final class UserPreferences {
         static let broaderContextEnabled   = "qalam.broaderContextEnabled"
         static let screenContextEnabled    = "qalam.screenContextEnabled"
         static let engine                  = "qalam.engine"
+        static let spaceAfterAccept        = "qalam.spaceAfterAccept"
+        static let autoUpdateEnabled       = "qalam.autoUpdateEnabled"
     }
 }

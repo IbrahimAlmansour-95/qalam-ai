@@ -4,9 +4,41 @@ enum OnboardingStep: Int, CaseIterable, Identifiable {
     case welcome = 0
     case accessibility = 1
     case installOllama = 2
-    case chooseModel = 3
+    case personalize = 3
+    case chooseModel = 4
 
     var id: Int { rawValue }
+}
+
+/// Slowly-drifting accent blobs behind the onboarding content — gives the
+/// flow a soft, "magical" depth without being distracting.
+private struct AuroraBackground: View {
+    @State private var animate = false
+
+    var body: some View {
+        ZStack {
+            QColors.backgroundPrimary
+            blob(QColors.accent.opacity(0.28), size: 360)
+                .offset(x: animate ? -120 : -80, y: animate ? -140 : -180)
+            blob(QColors.familyQwen.opacity(0.22), size: 300)
+                .offset(x: animate ? 140 : 100, y: animate ? 120 : 80)
+            blob(QColors.success.opacity(0.16), size: 260)
+                .offset(x: animate ? 80 : 40, y: animate ? -60 : -20)
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            withAnimation(.easeInOut(duration: 9).repeatForever(autoreverses: true)) {
+                animate = true
+            }
+        }
+    }
+
+    private func blob(_ color: Color, size: CGFloat) -> some View {
+        Circle()
+            .fill(color)
+            .frame(width: size, height: size)
+            .blur(radius: 90)
+    }
 }
 
 struct OnboardingView: View {
@@ -17,23 +49,28 @@ struct OnboardingView: View {
     @State private var ollamaPollTimer: Timer?
     @State private var selectedTag: String = "gemma3:4b"
     @State private var l10n = LocalizationStore.shared
+    @State private var personalName: String = ""
+    @State private var personalEmail: String = ""
 
     var body: some View {
         ZStack {
-            QVisualEffect(material: .hudWindow)
+            AuroraBackground()
 
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
                 content
-                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+                    .id(step)   // re-run entrance transition per step
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .offset(y: 16)),
+                        removal: .opacity.combined(with: .offset(y: -12))
+                    ))
                 Spacer(minLength: 0)
                 stepDots
                     .padding(.bottom, QSpacing.l)
             }
             .padding(QSpacing.xxl)
         }
-        .frame(width: 600, height: 500)
-        .background(QColors.backgroundPrimary)
+        .frame(width: 640, height: 560)
         .environment(\.layoutDirection, l10n.current.layoutDirection)
         .onDisappear {
             axPollTimer?.invalidate()
@@ -67,21 +104,16 @@ struct OnboardingView: View {
         case .welcome: welcomeStep
         case .accessibility: accessibilityStep
         case .installOllama: installOllamaStep
+        case .personalize: personalizeStep
         case .chooseModel: chooseModelStep
         }
     }
-
 
     // MARK: - Step 1
 
     private var welcomeStep: some View {
         VStack(spacing: QSpacing.l) {
-            ZStack {
-                Circle()
-                    .fill(QColors.accent.opacity(0.15))
-                    .frame(width: 96, height: 96)
-                QalamLogo(size: 60, tint: QColors.accent)
-            }
+            AnimatedLogoMark()
             VStack(spacing: 10) {
                 Text(L.t(.onbWelcomeTitle))
                     .font(QFonts.display)
@@ -199,7 +231,7 @@ struct OnboardingView: View {
                 QButton(title: L.t(.onbContinue), icon: "arrow.right",
                         style: .primary, size: .large,
                         disabled: !engineReady) {
-                    withAnimation(QAnimation.spring) { step = .chooseModel }
+                    withAnimation(QAnimation.spring) { step = .personalize }
                 }
                 .frame(maxWidth: 200)
             }
@@ -213,7 +245,63 @@ struct OnboardingView: View {
         modelManager.ollamaSource != .missing
     }
 
-    // MARK: - Step 4 — Smart model recommendation
+    // MARK: - Step 4 — Personalize
+
+    private var personalizeStep: some View {
+        VStack(spacing: QSpacing.l) {
+            ZStack {
+                Circle().fill(QColors.accent.opacity(0.15)).frame(width: 84, height: 84)
+                Image(systemName: "person.text.rectangle")
+                    .font(.system(size: 36, weight: .semibold))
+                    .foregroundStyle(QColors.accent)
+            }
+            VStack(spacing: 8) {
+                Text(L.t(.onbPersonalizeTitle))
+                    .font(QFonts.title)
+                    .foregroundStyle(QColors.textPrimary)
+                Text(L.t(.onbPersonalizeBody))
+                    .font(QFonts.body)
+                    .foregroundStyle(QColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 24)
+            }
+            VStack(spacing: 10) {
+                QTextField(placeholder: L.t(.onbPersonalizeName), text: $personalName)
+                QTextField(placeholder: L.t(.onbPersonalizeEmail), text: $personalEmail)
+            }
+            .frame(maxWidth: 320)
+
+            HStack(spacing: 12) {
+                QButton(title: L.t(.onbContinue), icon: "arrow.right",
+                        style: .primary, size: .large) {
+                    savePersonalInfo()
+                    withAnimation(QAnimation.spring) { step = .chooseModel }
+                }
+                QButton(title: L.t(.onbSkip), style: .ghost, size: .large) {
+                    withAnimation(QAnimation.spring) { step = .chooseModel }
+                }
+            }
+        }
+    }
+
+    private func savePersonalInfo() {
+        let store = PersonalInfoStore.shared
+        let name = personalName.trimmingCharacters(in: .whitespaces)
+        let email = personalEmail.trimmingCharacters(in: .whitespaces)
+        if !name.isEmpty {
+            if let item = store.items.first(where: { $0.label.lowercased() == "name" }) {
+                store.update(.init(id: item.id, label: item.label, value: name))
+            } else { store.add(label: "Name", value: name) }
+        }
+        if !email.isEmpty {
+            if let item = store.items.first(where: { $0.label.lowercased() == "email" }) {
+                store.update(.init(id: item.id, label: item.label, value: email))
+            } else { store.add(label: "Email", value: email) }
+        }
+    }
+
+    // MARK: - Step 5 — Smart model recommendation
 
     private var chooseModelStep: some View {
         let specs = DeviceSpecs.detect()
@@ -394,6 +482,33 @@ struct OnboardingView: View {
                     .fill(s.rawValue == step.rawValue ? QColors.accent : Color.white.opacity(0.12))
                     .frame(width: 8, height: 8)
             }
+        }
+    }
+}
+
+/// The قلم mark with a scale-in entrance and a slow breathing glow — the
+/// little bit of "magic" on the welcome screen.
+private struct AnimatedLogoMark: View {
+    @State private var appeared = false
+    @State private var glow = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(QColors.accent.opacity(0.18))
+                .frame(width: 110, height: 110)
+                .blur(radius: glow ? 14 : 6)
+                .scaleEffect(glow ? 1.08 : 0.96)
+            Circle()
+                .fill(QColors.accent.opacity(0.15))
+                .frame(width: 96, height: 96)
+            QalamLogo(size: 60, tint: QColors.accent)
+        }
+        .scaleEffect(appeared ? 1 : 0.6)
+        .opacity(appeared ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) { appeared = true }
+            withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) { glow = true }
         }
     }
 }

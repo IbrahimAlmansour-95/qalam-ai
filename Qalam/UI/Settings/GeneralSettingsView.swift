@@ -185,6 +185,18 @@ struct GeneralSettingsView: View {
                     get: { prefs.isEnabled },
                     set: { prefs.isEnabled = $0 }
                 ), label: L.t(.generalEnableSuggestions))
+                QDivider()
+                contextToggle(L.t(.generalSpaceAfterTab), help: L.t(.generalSpaceAfterTabHelp),
+                              isOn: Binding(get: { prefs.spaceAfterAccept },
+                                            set: { prefs.spaceAfterAccept = $0 }))
+                QDivider()
+                contextToggle(L.t(.generalAutoUpdate), help: L.t(.generalAutoUpdateHelp),
+                              isOn: Binding(get: { prefs.autoUpdateEnabled },
+                                            set: { newVal in
+                                                prefs.autoUpdateEnabled = newVal
+                                                if newVal { UpdateChecker.shared.start() }
+                                                else { UpdateChecker.shared.stop() }
+                                            }))
             }
         }
     }
