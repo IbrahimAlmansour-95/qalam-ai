@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1 — 2026-05-29
+
+- In-app uninstaller (Privacy tab): "Remove app, keep models & settings" or "Remove everything". Everything goes to the Trash (recoverable). Keeping data makes reinstalling instant — no model re-download, no re-setup.
+- Shows your data footprint and a "Show my data in Finder" shortcut.
+
+
 ## 1.1.0 — 2026-05-29
 
 - Inline ghost text now renders as a dimmed version of your own text color (not green/indigo).
