@@ -1,0 +1,40 @@
+# Build artifacts
+build/
+DerivedData/
+
+# Xcode user state — xcodeproj itself is regenerated via xcodegen.
+Qalam.xcodeproj/
+xcuserdata/
+*.xcuserstate
+*.xcworkspace/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Packages/
+Package.resolved
+*.xcframework/
+
+# Generated Info.plist preamble we don't track
+*.dSYM
+*.dSYM.zip
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+.Spotlight-V100
+.Trashes
+
+# Tooling
+.claude/
+.vscode/
+.idea/
+
+# Local environment overrides
+.env
+.env.local
+
+# Anything dropped by the user in /tmp during development
+/tmp/

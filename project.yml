@@ -1,0 +1,73 @@
+name: QalamAI
+options:
+  bundleIdPrefix: com.qalamai
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ARCHS: arm64
+    EXCLUDED_ARCHS: x86_64
+    ONLY_ACTIVE_ARCH: NO
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEAD_CODE_STRIPPING: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: NO
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    OTHER_SWIFT_FLAGS: "-Xfrontend -warn-long-expression-type-checking=200"
+
+targets:
+  QalamAI:
+    type: application
+    platform: macOS
+    sources:
+      - path: Qalam
+        excludes:
+          - "Resources/Qalam.entitlements"
+          - "Info.plist"
+    resources:
+      - path: Qalam/Resources/emoji-shortcodes.json
+      - path: Qalam/Resources/Assets.xcassets
+    info:
+      path: Qalam/Info.plist
+      properties:
+        CFBundleDisplayName: QalamAI
+        CFBundleName: QalamAI
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        CFBundleIdentifier: com.qalamai.app
+        CFBundlePackageType: APPL
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundleIconFile: AppIcon
+        LSMinimumSystemVersion: "14.0"
+        LSUIElement: true
+        NSHighResolutionCapable: true
+        NSAccessibilityUsageDescription: "QalamAI reads text in other apps to provide intelligent suggestions. All processing stays on your Mac."
+        NSAppleEventsUsageDescription: "QalamAI uses Apple Events to interact with other applications for autocomplete suggestions."
+        NSHumanReadableCopyright: "© 2026 Ibrahim Almansour. All rights reserved."
+        NSPrincipalClass: NSApplication
+    entitlements:
+      path: Qalam/Resources/Qalam.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+        com.apple.security.network.client: true
+        com.apple.security.automation.apple-events: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.qalamai.app
+        PRODUCT_NAME: QalamAI
+        INFOPLIST_KEY_LSUIElement: YES
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
