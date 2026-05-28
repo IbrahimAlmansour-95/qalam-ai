@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2 — 2026-05-29
+
+- Inline ghost text now occupies the exact caret line-box (height + baseline match) and appears instantly, so completions read as part of the line you're typing — like Cotypist — instead of a floating tooltip.
+
 ## 1.1.1 — 2026-05-29
 
 - In-app uninstaller (Privacy tab): "Remove app, keep models & settings" or "Remove everything". Everything goes to the Trash (recoverable). Keeping data makes reinstalling instant — no model re-download, no re-setup.
