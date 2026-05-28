@@ -50,26 +50,34 @@ final class GhostTextOverlayWindow {
         }
         viewModel.text = text
         viewModel.hint = hint
-        viewModel.style = style
         viewModel.isRTL = isRTL
+        // The overlay panel occupies the EXACT caret line-box: its height is
+        // the caret rect's height and its bottom sits on the caret's bottom.
+        // The text inside fills that height and centers vertically, so its
+        // baseline lands on the host line's baseline — reading as inline text
+        // rather than a floating tooltip. We also scale the ghost font to the
+        // line height when the host font size is unknown.
+        let lineHeight = (caret.height >= 8 && caret.height < 120) ? caret.height : 0
+        var style = style
+        if style.fontName == nil, lineHeight > 0 {
+            // Typical line height ≈ pointSize × 1.3; recover an approx size.
+            style.pointSize = max(11, min(28, lineHeight / 1.3))
+        }
+        viewModel.style = style
+        viewModel.lineHeight = lineHeight
+
         let size = hostingController.view.fittingSize
-        let width = max(40, min(560, ceil(size.width) + 2))
-        let height = max(16, ceil(size.height))
-        // Top of the caret line. NSWindow frames are bottom-left origin, so
-        // the panel's y is (lineTop - height).
-        let topY = caret.maxY
+        let width = max(20, min(620, ceil(size.width) + 2))
+        let height = lineHeight > 0 ? lineHeight : max(16, ceil(size.height))
+        // Bottom-left origin: panel bottom == caret bottom.
+        let y = caret.minY
         let x = isRTL ? (caret.minX - 1 - width) : (caret.maxX + 1)
-        panel.setFrame(NSRect(x: x,
-                              y: topY - height,
-                              width: width,
-                              height: height),
-                       display: true)
+        panel.setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
+        // Show instantly — a fade reads as a popover/hover. Inline text just
+        // appears.
+        panel.alphaValue = 1.0
         if !panel.isVisible {
             panel.orderFrontRegardless()
-        }
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = Double(Constants.Suggestion.ghostFadeInMs) / 1000.0
-            panel.animator().alphaValue = 1.0
         }
     }
 
@@ -94,6 +102,9 @@ final class GhostTextViewModel: ObservableObject {
     @Published var style: AccessibilityMonitor.CaretStyle =
         .init(fontName: nil, pointSize: 14, rgba: nil)
     @Published var isRTL: Bool = false
+    /// The host line-box height; when > 0 the text is vertically centered in
+    /// it so the baseline matches the surrounding text.
+    @Published var lineHeight: CGFloat = 0
 }
 
 struct GhostTextView: View {
@@ -103,13 +114,14 @@ struct GhostTextView: View {
         // Render in the HOST field's own font, size, and color (at reduced
         // opacity) so the suggestion blends into the line like macOS's native
         // QuickType, instead of a fixed overlay font that reads as separate.
+        // Vertically centered inside the caret line-box → shared baseline.
         Text(model.text)
             .font(hostFont)
             .foregroundStyle(foreground)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: true)
             .frame(maxWidth: .infinity, maxHeight: .infinity,
-                   alignment: model.isRTL ? .topTrailing : .topLeading)
+                   alignment: model.isRTL ? .trailing : .leading)
             .environment(\.layoutDirection, model.isRTL ? .rightToLeft : .leftToRight)
     }
 
