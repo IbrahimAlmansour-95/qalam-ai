@@ -4,12 +4,13 @@ import ApplicationServices
 
 struct TextContext: Sendable, Equatable {
     let appBundleID: String?
+    let appName: String?          // localized frontmost-app name, e.g. "Mail"
     let textBeforeCursor: String
     let wordBeingTyped: String
     let cursorIndex: Int
     let fullText: String
 
-    static let empty = TextContext(appBundleID: nil, textBeforeCursor: "", wordBeingTyped: "", cursorIndex: 0, fullText: "")
+    static let empty = TextContext(appBundleID: nil, appName: nil, textBeforeCursor: "", wordBeingTyped: "", cursorIndex: 0, fullText: "")
 }
 
 /// Polls the focused UI element via the AX API to extract typing context.
@@ -118,10 +119,13 @@ final class AccessibilityMonitor {
         }
 
         let lastWord = AccessibilityMonitor.lastWord(in: prefix)
-        let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        let frontApp = NSWorkspace.shared.frontmostApplication
+        let bundleID = frontApp?.bundleIdentifier
+        let appName = frontApp?.localizedName
 
         return TextContext(
             appBundleID: bundleID,
+            appName: appName,
             textBeforeCursor: prefix,
             wordBeingTyped: lastWord,
             cursorIndex: cursorIdx,
