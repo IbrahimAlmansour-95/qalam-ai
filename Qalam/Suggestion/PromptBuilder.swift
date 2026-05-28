@@ -5,7 +5,11 @@ enum PromptBuilder {
                       styleContext: String,
                       mode: WritingMode,
                       maxWords: Int,
-                      appName: String? = nil) -> String {
+                      appName: String? = nil,
+                      textAfterCursor: String? = nil,
+                      surroundingContext: String? = nil,
+                      clipboardContext: String? = nil,
+                      screenContext: String? = nil) -> String {
         let n = max(1, maxWords)
 
         // Target length nudge — get the model to actually USE the budget for
@@ -65,6 +69,25 @@ enum PromptBuilder {
         let trimmedStyle = styleContext.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedStyle.isEmpty {
             parts.append("Recent style examples (match this voice): \(trimmedStyle)")
+        }
+        // Optional context sources — each is bounded by its provider and only
+        // present when the user enabled it. They inform the completion but the
+        // model must still continue ONLY from the cursor.
+        if let surrounding = surroundingContext?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !surrounding.isEmpty {
+            parts.append("Nearby on-screen text (for context, do not repeat):\n\(surrounding)")
+        }
+        if let screen = screenContext?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !screen.isEmpty {
+            parts.append("Visible text around the cursor (for context, do not repeat):\n\(screen)")
+        }
+        if let clip = clipboardContext?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !clip.isEmpty {
+            parts.append("The user's clipboard (may be relevant, do not repeat verbatim):\n\(clip)")
+        }
+        if let after = textAfterCursor?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !after.isEmpty {
+            parts.append("Text that comes AFTER the cursor (your continuation must fit before it):\n\(after)")
         }
         parts.append("User's text so far:\n\(textBeforeCursor)")
         parts.append("Your output (next \(n == 1 ? "word only" : "1-\(n) words only"), nothing else):")

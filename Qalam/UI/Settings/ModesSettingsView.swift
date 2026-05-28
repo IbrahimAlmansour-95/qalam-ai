@@ -25,7 +25,7 @@ struct ModesSettingsView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Writing Modes")
+                Text(L.t(.modesHeading))
                     .font(QFonts.display)
                     .foregroundStyle(QColors.textPrimary)
                 Spacer()
@@ -48,7 +48,7 @@ struct ModesSettingsView: View {
 
     private var builtInGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("BUILT-IN")
+            Text(L.t(.modesBuiltIn))
                 .font(QFonts.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(QColors.textTertiary)
@@ -109,15 +109,15 @@ struct ModesSettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Custom modes")
+                        Text(L.t(.modesCustom))
                             .font(QFonts.bodyMed)
                             .foregroundStyle(QColors.textPrimary)
-                        Text("Define your own voice — for example, \"Translate to French\" or \"Make it shorter\".")
+                        Text(L.t(.modesCustomHelp))
                             .font(QFonts.caption)
                             .foregroundStyle(QColors.textTertiary)
                     }
                     Spacer()
-                    QButton(title: "New mode", icon: "plus", style: .secondary, size: .small) {
+                    QButton(title: L.t(.modesNewMode), icon: "plus", style: .secondary, size: .small) {
                         draftName = ""
                         draftInstruction = ""
                         draftTemperature = 0.3
@@ -126,7 +126,7 @@ struct ModesSettingsView: View {
                 }
 
                 if store.customModes.isEmpty {
-                    Text("No custom modes yet.")
+                    Text(L.t(.modesNoCustom))
                         .font(QFonts.caption)
                         .foregroundStyle(QColors.textTertiary)
                         .padding(.vertical, 6)
@@ -172,16 +172,16 @@ struct ModesSettingsView: View {
 
     private var addSheet: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("New writing mode")
+            Text(L.t(.modesNewModeTitle))
                 .font(QFonts.title)
                 .foregroundStyle(QColors.textPrimary)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Name").font(QFonts.caption).foregroundStyle(QColors.textTertiary)
+                Text(L.t(.modesName)).font(QFonts.caption).foregroundStyle(QColors.textTertiary)
                 QTextField(placeholder: "e.g. Translate to French", text: $draftName)
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("Instruction").font(QFonts.caption).foregroundStyle(QColors.textTertiary)
+                Text(L.t(.modesInstruction)).font(QFonts.caption).foregroundStyle(QColors.textTertiary)
                 TextEditor(text: $draftInstruction)
                     .font(QFonts.body)
                     .scrollContentBackground(.hidden)
@@ -195,7 +195,7 @@ struct ModesSettingsView: View {
                     .clipShape(RoundedRectangle(cornerRadius: QRadius.medium))
             }
             HStack {
-                Text("Temperature").font(QFonts.caption).foregroundStyle(QColors.textTertiary)
+                Text(L.t(.modesTemperature)).font(QFonts.caption).foregroundStyle(QColors.textTertiary)
                 Slider(value: $draftTemperature, in: 0...1, step: 0.05)
                     .tint(QColors.accent)
                 Text(String(format: "%.2f", draftTemperature))
@@ -206,8 +206,8 @@ struct ModesSettingsView: View {
 
             HStack {
                 Spacer()
-                QButton(title: "Cancel", style: .ghost, size: .medium) { showAddSheet = false }
-                QButton(title: "Create", style: .primary, size: .medium,
+                QButton(title: L.t(.commonCancel), style: .ghost, size: .medium) { showAddSheet = false }
+                QButton(title: L.t(.commonCreate), style: .primary, size: .medium,
                         disabled: draftName.trimmingCharacters(in: .whitespaces).isEmpty
                                || draftInstruction.trimmingCharacters(in: .whitespaces).isEmpty) {
                     store.add(name: draftName.trimmingCharacters(in: .whitespaces),

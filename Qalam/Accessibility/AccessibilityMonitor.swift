@@ -6,11 +6,12 @@ struct TextContext: Sendable, Equatable {
     let appBundleID: String?
     let appName: String?          // localized frontmost-app name, e.g. "Mail"
     let textBeforeCursor: String
+    let textAfterCursor: String   // suffix in the same field, bounded
     let wordBeingTyped: String
     let cursorIndex: Int
     let fullText: String
 
-    static let empty = TextContext(appBundleID: nil, appName: nil, textBeforeCursor: "", wordBeingTyped: "", cursorIndex: 0, fullText: "")
+    static let empty = TextContext(appBundleID: nil, appName: nil, textBeforeCursor: "", textAfterCursor: "", wordBeingTyped: "", cursorIndex: 0, fullText: "")
 }
 
 /// Polls the focused UI element via the AX API to extract typing context.
@@ -118,6 +119,11 @@ final class AccessibilityMonitor {
             prefix = String(prefix.dropFirst(dropCount))
         }
 
+        // Suffix (text after the cursor) — bounded. Lets the model write a
+        // continuation that fits what already follows the caret.
+        var suffix = String(text[index...])
+        if suffix.count > 240 { suffix = String(suffix.prefix(240)) }
+
         let lastWord = AccessibilityMonitor.lastWord(in: prefix)
         let frontApp = NSWorkspace.shared.frontmostApplication
         let bundleID = frontApp?.bundleIdentifier
@@ -127,10 +133,66 @@ final class AccessibilityMonitor {
             appBundleID: bundleID,
             appName: appName,
             textBeforeCursor: prefix,
+            textAfterCursor: suffix,
             wordBeingTyped: lastWord,
             cursorIndex: cursorIdx,
             fullText: text
         )
+    }
+
+    /// Broader surrounding context: visible static-text near the focused field
+    /// (e.g. the message thread above a reply box). Walks up to the focused
+    /// element's parent and collects sibling/descendant `AXValue`/`AXTitle`
+    /// static text. Bounded and best-effort — returns "" if nothing useful.
+    func surroundingText(maxChars: Int = 600) -> String {
+        let systemWide = AXUIElementCreateSystemWide()
+        var focused: AnyObject?
+        guard AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let unwrapped = focused
+        else { return "" }
+        let element = unwrapped as! AXUIElement
+
+        var parentRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(element, kAXParentAttribute as CFString, &parentRef) == .success,
+              let parentUnwrapped = parentRef
+        else { return "" }
+        let parent = parentUnwrapped as! AXUIElement
+
+        var collected: [String] = []
+        collectStaticText(from: parent, into: &collected, budget: maxChars, depth: 0)
+        let joined = collected.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(joined.prefix(maxChars))
+    }
+
+    private func collectStaticText(from element: AXUIElement,
+                                   into out: inout [String],
+                                   budget: Int,
+                                   depth: Int) {
+        // Bound the walk so we never stall on huge AX trees.
+        if depth > 4 { return }
+        if out.reduce(0, { $0 + $1.count }) > budget { return }
+
+        var roleRef: AnyObject?
+        let role = (AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef) == .success)
+            ? (roleRef as? String) : nil
+
+        if role == "AXStaticText" {
+            var valueRef: AnyObject?
+            if AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &valueRef) == .success,
+               let s = valueRef as? String {
+                let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                if t.count >= 2 { out.append(t) }
+            }
+        }
+
+        var childrenRef: AnyObject?
+        if AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenRef) == .success,
+           let children = childrenRef as? [AXUIElement] {
+            for child in children.prefix(40) {
+                collectStaticText(from: child, into: &out, budget: budget, depth: depth + 1)
+                if out.reduce(0, { $0 + $1.count }) > budget { break }
+            }
+        }
     }
 
     static func lastWord(in text: String) -> String {

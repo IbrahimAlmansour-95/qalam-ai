@@ -30,6 +30,8 @@
     <string>QalamAI reads text in other apps to provide intelligent suggestions. All processing stays on your Mac.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>QalamAI uses Apple Events to interact with other applications for autocomplete suggestions.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>QalamAI can optionally read on-screen text near your cursor to improve autocomplete in apps that don't expose their text. This is off by default and never leaves your Mac.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSHumanReadableCopyright</key>

@@ -17,8 +17,10 @@ struct GeneralSettingsView: View {
             VStack(alignment: .leading, spacing: QSpacing.xl) {
                 header
                 languageCard
+                engineCard
                 togglesCard
                 correctionsCard
+                contextSourcesCard
                 suggestionLengthCard
                 tuningCard
                 excludedAppsCard
@@ -79,6 +81,90 @@ struct GeneralSettingsView: View {
         .buttonStyle(.plain)
     }
 
+    private var engineCard: some View {
+        QCard {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L.t(.generalEngine))
+                        .font(QFonts.bodyMed)
+                        .foregroundStyle(QColors.textPrimary)
+                    Text(L.t(.generalEngineHelp))
+                        .font(QFonts.caption)
+                        .foregroundStyle(QColors.textTertiary)
+                }
+                HStack(spacing: 6) {
+                    engineChip("ollama", label: L.t(.engineOllama), enabled: true)
+                    engineChip("appleIntelligence",
+                               label: L.t(.engineAppleIntelligence),
+                               enabled: AppleIntelligenceBackend.isAvailable)
+                }
+                if !AppleIntelligenceBackend.isAvailable,
+                   let reason = AppleIntelligenceBackend.unavailableReason {
+                    Text("Apple Intelligence: \(reason)")
+                        .font(QFonts.caption)
+                        .foregroundStyle(QColors.textTertiary)
+                }
+            }
+        }
+    }
+
+    private func engineChip(_ id: String, label: String, enabled: Bool) -> some View {
+        let active = prefs.engine == id
+        return Button {
+            if enabled { prefs.engine = id }
+        } label: {
+            Text(label)
+                .font(QFonts.bodyMed)
+                .foregroundStyle(active ? .white : (enabled ? QColors.textSecondary : QColors.textTertiary))
+                .padding(.vertical, 6).padding(.horizontal, 12)
+                .background(active ? QColors.accent : QColors.backgroundElevated)
+                .clipShape(Capsule())
+                .opacity(enabled ? 1 : 0.5)
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+    }
+
+    private var contextSourcesCard: some View {
+        QCard {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L.t(.generalContextSources))
+                        .font(QFonts.bodyMed)
+                        .foregroundStyle(QColors.textPrimary)
+                    Text(L.t(.generalContextSourcesHelp))
+                        .font(QFonts.caption)
+                        .foregroundStyle(QColors.textTertiary)
+                }
+                QDivider()
+                contextToggle(L.t(.ctxBroader), help: L.t(.ctxBroaderHelp),
+                              isOn: Binding(get: { prefs.broaderContextEnabled },
+                                            set: { prefs.broaderContextEnabled = $0 }))
+                QDivider()
+                contextToggle(L.t(.ctxClipboard), help: L.t(.ctxClipboardHelp),
+                              isOn: Binding(get: { prefs.clipboardContextEnabled },
+                                            set: { prefs.clipboardContextEnabled = $0 }))
+                QDivider()
+                contextToggle(L.t(.ctxScreen), help: L.t(.ctxScreenHelp),
+                              isOn: Binding(get: { prefs.screenContextEnabled },
+                                            set: { newVal in
+                                                prefs.screenContextEnabled = newVal
+                                                if newVal { ScreenOCRContext.shared.requestPermission() }
+                                            }))
+            }
+        }
+    }
+
+    private func contextToggle(_ title: String, help: String, isOn: Binding<Bool>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            QToggle(isOn: isOn, label: title)
+            Text(help)
+                .font(QFonts.caption)
+                .foregroundStyle(QColors.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private var togglesCard: some View {
         QCard {
             VStack(alignment: .leading, spacing: 14) {
@@ -111,10 +197,10 @@ struct GeneralSettingsView: View {
                         .foregroundStyle(QColors.success)
                         .font(.system(size: 16))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Context-aware autocorrect")
+                        Text(L.t(.generalContextAutocorrect))
                             .font(QFonts.bodyMed)
                             .foregroundStyle(QColors.textPrimary)
-                        Text("Catches typos and grammar issues based on surrounding text — not random replacements.")
+                        Text(L.t(.generalContextAutocorrectBody))
                             .font(QFonts.caption)
                             .foregroundStyle(QColors.textTertiary)
                     }
@@ -124,12 +210,12 @@ struct GeneralSettingsView: View {
                 QToggle(isOn: Binding(
                     get: { prefs.autoCorrectEnabled },
                     set: { prefs.autoCorrectEnabled = $0 }
-                ), label: "Suggest spelling fixes (local, instant)")
+                ), label: L.t(.generalSuggestSpelling))
                 QDivider()
                 QToggle(isOn: Binding(
                     get: { prefs.autoGrammarEnabled },
                     set: { prefs.autoGrammarEnabled = $0 }
-                ), label: "Suggest grammar fixes after each sentence (uses the local model)")
+                ), label: L.t(.generalSuggestGrammar))
             }
         }
     }
@@ -193,7 +279,7 @@ struct GeneralSettingsView: View {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("Suggestion delay")
+                        Text(L.t(.generalSuggestionDelay))
                             .font(QFonts.bodyMed)
                             .foregroundStyle(QColors.textPrimary)
                         Spacer()
@@ -210,7 +296,7 @@ struct GeneralSettingsView: View {
                         step: 10
                     )
                     .tint(QColors.accent)
-                    Text("Wait this long after the last keystroke before asking the model.")
+                    Text(L.t(.generalSuggestionDelayHelp))
                         .font(QFonts.caption)
                         .foregroundStyle(QColors.textTertiary)
                 }
@@ -220,14 +306,14 @@ struct GeneralSettingsView: View {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
-                            Text("Trigger threshold")
+                            Text(L.t(.generalTriggerThreshold))
                                 .font(QFonts.bodyMed)
                                 .foregroundStyle(QColors.textPrimary)
                             Text("\(prefs.triggerThreshold) chars")
                                 .font(QFonts.mono)
                                 .foregroundStyle(QColors.textSecondary)
                         }
-                        Text("Number of characters before suggestions activate.")
+                        Text(L.t(.generalTriggerThresholdHelp))
                             .font(QFonts.caption)
                             .foregroundStyle(QColors.textTertiary)
                     }
@@ -248,7 +334,7 @@ struct GeneralSettingsView: View {
         QCard {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Excluded apps")
+                    Text(L.t(.generalExcludedApps))
                         .font(QFonts.bodyMed)
                         .foregroundStyle(QColors.textPrimary)
                     Spacer()
@@ -263,7 +349,7 @@ struct GeneralSettingsView: View {
                     } label: {
                         HStack(spacing: 3) {
                             Image(systemName: "plus")
-                            Text("Add app")
+                            Text(L.t(.generalAddApp))
                         }
                         .font(QFonts.caption)
                         .foregroundStyle(QColors.accent)
@@ -273,7 +359,7 @@ struct GeneralSettingsView: View {
                 }
 
                 if prefs.excludedBundleIDs.isEmpty {
-                    Text("No apps excluded. Qalam will suggest in every app where it can read text.")
+                    Text(L.t(.generalExcludedAppsHelp))
                         .font(QFonts.caption)
                         .foregroundStyle(QColors.textTertiary)
                         .padding(.vertical, 8)
