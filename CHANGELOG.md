@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.3 — 2026-05-29
+
+- Ghost text matches the host field's font, size, and color more reliably (reads the run's attributes with element-level font/color fallbacks) so completions blend into your writing like Cotypist.
+- Added a "Check for updates" button in General settings (works even with auto-update off), with up-to-date / download states.
+
 ## 1.1.2 — 2026-05-29
 
 - Inline ghost text now occupies the exact caret line-box (height + baseline match) and appears instantly, so completions read as part of the line you're typing — like Cotypist — instead of a floating tooltip.

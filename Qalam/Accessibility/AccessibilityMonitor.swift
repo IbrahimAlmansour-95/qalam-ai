@@ -312,49 +312,90 @@ final class AccessibilityMonitor {
     }
 
     func caretStyle() -> CaretStyle {
-        let fallback = CaretStyle(fontName: nil, pointSize: 14, rgba: nil)
+        var style = CaretStyle(fontName: nil, pointSize: 14, rgba: nil)
         let systemWide = AXUIElementCreateSystemWide()
         var focused: AnyObject?
         guard AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
               let elementUnwrapped = focused
-        else { return fallback }
+        else { return style }
         let element = elementUnwrapped as! AXUIElement
 
-        // Resolve a 1-char range around the cursor to query its run attributes.
-        var rangeRef: AnyObject?
-        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeRef) == .success,
-              let rangeValue = rangeRef
-        else { return fallback }
-        var sel = CFRange(location: 0, length: 0)
-        guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &sel) else { return fallback }
-
-        let loc = max(0, sel.location - 1)
-        var probe = CFRange(location: loc, length: 1)
-        guard let probeVal = AXValueCreate(.cfRange, &probe) else { return fallback }
-
-        var attrRef: AnyObject?
-        let err = AXUIElementCopyParameterizedAttributeValue(
-            element,
-            "AXAttributedStringForRange" as CFString,
-            probeVal,
-            &attrRef
-        )
-        guard err == .success, let attr = attrRef as? NSAttributedString, attr.length > 0 else {
-            return fallback
+        // 1) Best source: the attributed run at the cursor. Try a couple of
+        //    nearby ranges since some apps return empty attrs at the very tail.
+        if let sel = selectedCFRange(of: element) {
+            let probes = [
+                CFRange(location: max(0, sel.location - 1), length: 1),
+                CFRange(location: sel.location, length: 1),
+                CFRange(location: max(0, sel.location - 2), length: 1),
+            ]
+            for probe in probes {
+                if applyAttributedStyle(into: &style, element: element, range: probe) { break }
+            }
         }
 
-        var style = fallback
+        // 2) Fallback: element-level font / color attributes (some Cocoa text
+        //    views expose these directly even when the attributed-string call
+        //    returns nothing).
+        if style.fontName == nil {
+            var fontRef: AnyObject?
+            if AXUIElementCopyAttributeValue(element, "AXFont" as CFString, &fontRef) == .success {
+                if let font = fontRef as? NSFont {
+                    style.fontName = font.fontName; style.pointSize = font.pointSize
+                } else if let dict = fontRef as? [String: Any] {
+                    // AXFont can come back as a dict {AXFontName, AXFontSize}.
+                    if let name = dict["AXFontName"] as? String { style.fontName = name }
+                    if let size = dict["AXFontSize"] as? CGFloat { style.pointSize = size }
+                    else if let size = (dict["AXFontSize"] as? NSNumber)?.doubleValue { style.pointSize = CGFloat(size) }
+                }
+            }
+        }
+        if style.rgba == nil {
+            var colorRef: AnyObject?
+            if AXUIElementCopyAttributeValue(element, "AXForegroundColor" as CFString, &colorRef) == .success,
+               CFGetTypeID(colorRef as CFTypeRef) == CGColor.typeID {
+                let cg = colorRef as! CGColor
+                if let ns = NSColor(cgColor: cg)?.usingColorSpace(.sRGB) {
+                    style.rgba = [ns.redComponent, ns.greenComponent, ns.blueComponent, ns.alphaComponent]
+                }
+            }
+        }
+        return style
+    }
+
+    private func selectedCFRange(of element: AXUIElement) -> CFRange? {
+        var rangeRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeRef) == .success,
+              let rangeValue = rangeRef else { return nil }
+        var sel = CFRange(location: 0, length: 0)
+        guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &sel) else { return nil }
+        return sel
+    }
+
+    /// Reads font + foreground color from the attributed run for `range`.
+    /// Returns true if it found at least a font.
+    private func applyAttributedStyle(into style: inout CaretStyle,
+                                      element: AXUIElement, range: CFRange) -> Bool {
+        var probe = range
+        guard let probeVal = AXValueCreate(.cfRange, &probe) else { return false }
+        var attrRef: AnyObject?
+        guard AXUIElementCopyParameterizedAttributeValue(
+                element, "AXAttributedStringForRange" as CFString, probeVal, &attrRef) == .success,
+              let attr = attrRef as? NSAttributedString, attr.length > 0
+        else { return false }
+
         let attrs = attr.attributes(at: 0, effectiveRange: nil)
+        var foundFont = false
         if let font = attrs[.font] as? NSFont {
             style.fontName = font.fontName
             style.pointSize = font.pointSize
+            foundFont = true
         }
         if let color = attrs[.foregroundColor] as? NSColor,
            let srgb = color.usingColorSpace(.sRGB) {
             style.rgba = [srgb.redComponent, srgb.greenComponent,
                           srgb.blueComponent, srgb.alphaComponent]
         }
-        return style
+        return foundFont
     }
 
     /// Asks AX for the bounding rect of a text range. Returns the raw rect in

@@ -4,6 +4,7 @@ import ServiceManagement
 struct GeneralSettingsView: View {
     @State private var prefs = UserPreferences.shared
     @State private var l10n = LocalizationStore.shared
+    @State private var updater = UpdateChecker.shared
     @State private var newExcluded: String = ""
     @State private var availableApps: [RunningApp] = []
 
@@ -197,6 +198,26 @@ struct GeneralSettingsView: View {
                                                 if newVal { UpdateChecker.shared.start() }
                                                 else { UpdateChecker.shared.stop() }
                                             }))
+                HStack(spacing: 10) {
+                    QButton(title: updater.checkState == .checking ? L.t(.updateChecking)
+                                                                    : L.t(.updateCheckNow),
+                            icon: "arrow.triangle.2.circlepath",
+                            style: .secondary, size: .small,
+                            disabled: updater.checkState == .checking) {
+                        Task { await UpdateChecker.shared.checkManually() }
+                    }
+                    if updater.checkState == .upToDate {
+                        Label(L.t(.updateUpToDate), systemImage: "checkmark.circle.fill")
+                            .font(QFonts.caption)
+                            .foregroundStyle(QColors.success)
+                    } else if let r = updater.available {
+                        QButton(title: "\(L.t(.updateDownload)) v\(r.version)",
+                                style: .primary, size: .small) {
+                            UpdateChecker.shared.openDownload()
+                        }
+                    }
+                    Spacer()
+                }
             }
         }
     }
