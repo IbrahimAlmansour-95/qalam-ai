@@ -113,6 +113,9 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     // Updater
     case updateAvailable
     case updateDownload
+    case updateCheckNow
+    case updateChecking
+    case updateUpToDate
     // Uninstall
     case uninstallTitle
     case uninstallBody
@@ -374,6 +377,9 @@ enum Translations {
             .english: "Download",
             .arabic:  "تنزيل"
         ],
+        .updateCheckNow:  [.english: "Check for updates", .arabic: "التحقق من التحديثات"],
+        .updateChecking:  [.english: "Checking…", .arabic: "جارٍ التحقق…"],
+        .updateUpToDate:  [.english: "You're up to date", .arabic: "أنت على أحدث إصدار"],
 
         // ━━━ Uninstall ━━━
         .uninstallTitle: [

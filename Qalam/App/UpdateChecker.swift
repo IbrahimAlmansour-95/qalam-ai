@@ -17,7 +17,9 @@ final class UpdateChecker {
         let dmgURL: URL?         // first .dmg asset, if any
     }
 
+    enum CheckState: Equatable { case idle, checking, upToDate, found }
     private(set) var available: Release?
+    private(set) var checkState: CheckState = .idle
     private var timer: Timer?
 
     /// `owner/repo` for the public releases API.
@@ -40,12 +42,25 @@ final class UpdateChecker {
     }
 
     func checkNow() async {
-        guard UserPreferences.shared.autoUpdateEnabled else { return }
         guard let latest = await fetchLatest() else { return }
         if isNewer(latest.version, than: Constants.version) {
             available = latest
         } else {
             available = nil
+        }
+    }
+
+    /// User-triggered check from Settings; updates `checkState` for the UI even
+    /// when auto-update is off.
+    func checkManually() async {
+        checkState = .checking
+        guard let latest = await fetchLatest() else { checkState = .idle; return }
+        if isNewer(latest.version, than: Constants.version) {
+            available = latest
+            checkState = .found
+        } else {
+            available = nil
+            checkState = .upToDate
         }
     }
 
