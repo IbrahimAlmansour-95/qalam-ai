@@ -223,7 +223,7 @@ struct ModelsSettingsView: View {
                             }
                         }
 
-                        HStack(spacing: 6) {
+                        QFlowLayout(spacing: 6, lineSpacing: 6) {
                             QTag(text: String(format: "%.1f GB", entry.sizeGB), style: .neutral, icon: "arrow.down.circle")
                             QTag(text: "\(Int(entry.ramGB)) GB RAM", style: .neutral, icon: "memorychip")
                             QTag(text: entry.speed.label, style: .accent, icon: entry.speed.icon)
@@ -234,6 +234,7 @@ struct ModelsSettingsView: View {
                                 QTag(text: L.t(.modelGoodForArabic), style: .success, icon: "character.book.closed")
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                         Text(entry.description)
                             .font(QFonts.body)

@@ -37,7 +37,7 @@ struct QModelCard: View {
                         statusDot
                     }
 
-                    HStack(spacing: 5) {
+                    QFlowLayout(spacing: 5, lineSpacing: 5) {
                         QTag(text: sizeText, style: .neutral)
                         QTag(text: entry.speed.label,
                              style: entry.speed == .fast ? .accent : .neutral,
