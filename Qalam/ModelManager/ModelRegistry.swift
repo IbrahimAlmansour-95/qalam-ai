@@ -64,9 +64,28 @@ struct ModelEntry: Identifiable, Codable, Hashable, Sendable {
 
     var familyName: String { family.rawValue }
     var maxSuggestionWords: Int { speed.maxSuggestionWords }
+
+    /// True for models with strong multilingual training that includes Arabic.
+    /// Surfaced in the Models UI so users writing Arabic pick a capable model.
+    /// Curated rather than computed from family because size matters — tiny
+    /// models in an otherwise-multilingual family are still poor at Arabic.
+    var goodAtArabic: Bool { ModelRegistry.arabicCapableTags.contains(ollamaTag) }
 }
 
 enum ModelRegistry {
+    /// Models with reliable Arabic generation. Gemma 3/3n/4 (140+ languages)
+    /// and Qwen 2.5/3 (29+ languages incl. Arabic) qualify above a minimum
+    /// size; the tiniest variants and the English-leaning families (Phi,
+    /// Llama 3.x — Arabic isn't in its official language set, SmolLM2) are
+    /// excluded so the hint stays trustworthy.
+    static let arabicCapableTags: Set<String> = [
+        "gemma4:e2b", "gemma4:e4b", "gemma4:26b", "gemma4:31b",
+        "gemma3n:e2b", "gemma3n:e4b",
+        "gemma3:4b", "gemma3:12b",
+        "qwen3:1.7b", "qwen3:4b", "qwen3:8b", "qwen3:30b-a3b",
+        "qwen2.5:1.5b", "qwen2.5:3b", "qwen2.5:7b",
+    ]
+
     static let all: [ModelEntry] = [
         // GEMMA 4 — Google (next-gen, ollama.com/library/gemma4)
         ModelEntry(

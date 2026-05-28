@@ -138,6 +138,7 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     case popoverStatusInstallOllama
     case popoverStatusChecking
     case popoverStatusNeedsAccess
+    case modelGoodForArabic
     case popoverCompatibility
     case popoverCompatibilityWorks
     case popoverCompatibilityToggle
@@ -375,6 +376,10 @@ enum Translations {
         .popoverStatusChecking:      [.english: "Checking…",      .arabic: "جارٍ التحقق…"],
         .popoverStatusNeedsAccess:   [.english: "Needs access",   .arabic: "بحاجة لصلاحية"],
 
+        .modelGoodForArabic: [
+            .english: "Good for Arabic",
+            .arabic:  "مناسب للعربية"
+        ],
         .popoverCompatibility: [
             .english: "COMPATIBILITY",
             .arabic:  "التوافق مع التطبيقات"
