@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.0 — 2026-05-29
+
+- Inline ghost text now renders as a dimmed version of your own text color (not green/indigo).
+- Spell-aware: valid in-progress words continue via completion; only finished misspelled words get corrected.
+- Toggle: add a trailing space after accepting with Tab.
+- New **My Info** vault (name/email/phone/custom) injected into the prompt for in-context completion of your details.
+- Context sources: app name, text-after-cursor, nearby AX text, clipboard (opt-in), screen OCR (opt-in).
+- **Apple Intelligence** Foundation Model engine option (macOS 26+), falls back to bundled Ollama.
+- GitHub **auto-update** checker with a Download banner in the menu-bar popover.
+- Apple-like onboarding revamp (aurora background, animated logo, personalize step).
+- Completed Arabic localization across all settings tabs.
+- Version is now single-sourced from `Constants.version`; bump rule documented in CONTRIBUTING.
+
+
 ## 1.0.0 — 2026-05-28
 
 Initial public release. Everything below is in the box.
