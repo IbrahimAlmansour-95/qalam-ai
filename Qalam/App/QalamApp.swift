@@ -119,20 +119,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// text's top aligns with the caret line's top — matching the typed text's
     /// visual line so the suggestion looks inline.
     private static func overlayAnchor() -> CGPoint? {
-        if let caret = AccessibilityMonitor.shared.caretFrame(), caret.width >= 0 {
-            // `caret.maxY` is the TOP of the caret line in AppKit (Y up).
-            // Place the overlay's TOP-LEFT there, just to the right of the
-            // caret's right edge.
-            return CGPoint(x: caret.maxX + 1, y: caret.maxY)
-        }
-        if let frame = AccessibilityMonitor.shared.focusedFrame() {
-            // No caret bounds (Cursor/VSCode/Electron). Place a hair below the
-            // top of the focused area — close to first-line typing.
-            return CGPoint(x: frame.minX + 8, y: frame.maxY - 4)
-        }
-        let mouse = NSEvent.mouseLocation
-        guard mouse != .zero else { return nil }
-        return CGPoint(x: mouse.x + 14, y: mouse.y)
+        // Only ever anchor at a real, validated caret rect. `caret.maxY` is
+        // the TOP of the caret line in AppKit (Y up); place the overlay's
+        // top-left just past the caret's right edge so the ghost text reads
+        // inline on the current line.
+        //
+        // If we can't resolve a trustworthy caret (e.g. Electron editors whose
+        // canvas isn't AX-readable), we return nil so the overlay HIDES rather
+        // than drawing at the field's top-left, which would overlap the first
+        // line of a multi-line field.
+        guard let caret = AccessibilityMonitor.shared.caretFrame() else { return nil }
+        return CGPoint(x: caret.maxX + 1, y: caret.maxY)
     }
 
     private static func hint(for suggestion: SuggestionResult?) -> GhostStyleHint {
