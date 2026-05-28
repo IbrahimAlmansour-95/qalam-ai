@@ -4,7 +4,8 @@ enum PromptBuilder {
     static func build(textBeforeCursor: String,
                       styleContext: String,
                       mode: WritingMode,
-                      maxWords: Int) -> String {
+                      maxWords: Int,
+                      appName: String? = nil) -> String {
         let n = max(1, maxWords)
 
         // Target length nudge — get the model to actually USE the budget for
@@ -52,6 +53,12 @@ enum PromptBuilder {
         """
 
         var parts: [String] = [basePrompt]
+        // Telling the model which app the user is in materially improves
+        // relevance — completions in Mail read like email, in a chat app like
+        // a message, in Xcode like code. Costs nothing (no extra permission).
+        if let appName, !appName.isEmpty {
+            parts.append("The user is typing in the app: \(appName). Match how people write there.")
+        }
         if !mode.instruction.isEmpty && mode.id != WritingMode.neutral.id {
             parts.append("Mode: \(mode.name). \(mode.instruction)")
         }

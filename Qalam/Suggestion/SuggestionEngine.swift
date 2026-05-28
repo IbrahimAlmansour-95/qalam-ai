@@ -351,7 +351,8 @@ final class SuggestionEngine {
             textBeforeCursor: context.textBeforeCursor,
             styleContext: style,
             mode: mode,
-            maxWords: maxWords
+            maxWords: maxWords,
+            appName: context.appName
         )
 
         isStreaming = true
