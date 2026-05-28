@@ -128,6 +128,30 @@ scripts/
   dmg-resources/         800×500 installer background (1× + 2×)
 ```
 
+## Distributing to other Macs
+
+The shipped DMG is **ad-hoc signed**, not notarized. That's fine on the build machine, but any *other* Mac quarantines it on download and Gatekeeper blocks it with *"QalamAI.app can't be opened."* Recipients on Apple Silicon can bypass it with `scripts/Fix-QalamAI-Open.command` or `xattr -dr com.apple.quarantine /Applications/QalamAI.app` (see [Troubleshooting](#troubleshooting)).
+
+To distribute without that friction you need a **paid Apple Developer account** ($99/yr), then sign with a Developer ID and notarize:
+
+```bash
+# 1. Sign with your Developer ID (hardened runtime + our entitlements)
+codesign --force --deep --options runtime \
+  --entitlements Qalam/Resources/Qalam.entitlements \
+  --sign "Developer ID Application: Your Name (TEAMID)" \
+  build/Export/QalamAI.app
+
+# 2. Repackage the DMG (scripts/package-dmg.sh), then notarize it
+xcrun notarytool submit build/QalamAI-1.0.0-arm64.dmg \
+  --apple-id "you@example.com" --team-id "TEAMID" \
+  --password "app-specific-password" --wait
+
+# 3. Staple the ticket so it works offline
+xcrun stapler staple build/QalamAI-1.0.0-arm64.dmg
+```
+
+After stapling, the DMG opens on any Apple Silicon Mac with no warnings. (Intel Macs still can't run it — QalamAI is arm64-only.)
+
 ## Architecture notes
 
 - **Single-file app entry** ([`QalamApp.swift`](Qalam/App/QalamApp.swift)) — `@main` `enum QalamAIMain` bootstraps `NSApplication` directly. SwiftUI `App` is deliberately avoided because its `Settings { EmptyView() }` scene auto-opens an empty Settings window on macOS Tahoe for accessory apps.
@@ -137,6 +161,15 @@ scripts/
 - **Swift 6 strict concurrency** everywhere (`SWIFT_STRICT_CONCURRENCY=complete`).
 
 ## Troubleshooting
+
+**"The application 'QalamAI.app' can't be opened" on someone else's Mac:**
+QalamAI is **ad-hoc signed**, not notarized through a paid Apple Developer account. When the DMG is downloaded/copied to another Mac, macOS quarantines the app and Gatekeeper refuses to launch it. Two fixes (Apple Silicon only — QalamAI does not run on Intel Macs):
+
+- **Easiest:** double-click `scripts/Fix-QalamAI-Open.command` (also shipped in the repo), which removes the quarantine flag and opens the app.
+- **Terminal:** `xattr -dr com.apple.quarantine /Applications/QalamAI.app` then open it normally.
+- **GUI:** try to open it, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
+
+The permanent fix is Developer ID signing + notarization (requires a paid Apple Developer account). See [Distributing to other Macs](#distributing-to-other-macs).
 
 **"Needs access" red badge in the menu bar:** Open System Settings → Privacy & Security → Accessibility, remove any stale QalamAI entry, then re-add (the app will trigger the prompt). The app auto-detects the flip and reinstalls the keystroke tap within 2 s, no restart needed.
 
