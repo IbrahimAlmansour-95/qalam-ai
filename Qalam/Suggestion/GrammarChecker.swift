@@ -14,8 +14,25 @@ struct GrammarIssue: Sendable, Equatable {
 actor GrammarChecker {
     static let shared = GrammarChecker()
 
-    private let language = "en"
     private var docTag: Int = NSSpellChecker.uniqueSpellDocumentTag()
+
+    /// Whether the system has an Arabic spelling dictionary installed. Computed
+    /// once. If false we skip Arabic spelling (the LLM grammar pass still runs).
+    private let arabicAvailable: Bool = {
+        NSSpellChecker.shared.availableLanguages.contains { $0.hasPrefix("ar") }
+    }()
+
+    /// Picks the NSSpellChecker language code for a word based on its script.
+    /// Arabic Unicode block is U+0600–U+06FF (plus presentation forms).
+    private func language(for text: String) -> String {
+        let isArabic = text.unicodeScalars.contains { scalar in
+            (0x0600...0x06FF).contains(scalar.value) ||
+            (0x0750...0x077F).contains(scalar.value) ||   // Arabic Supplement
+            (0xFB50...0xFDFF).contains(scalar.value) ||   // Presentation Forms-A
+            (0xFE70...0xFEFF).contains(scalar.value)      // Presentation Forms-B
+        }
+        return isArabic ? "ar" : "en"
+    }
 
     /// Runs an asynchronous spelling+grammar pass over `text`. Returns the
     /// FIRST issue whose end is at or just before `cursorOffset` — i.e. the
@@ -74,8 +91,27 @@ actor GrammarChecker {
         let checker = NSSpellChecker.shared
         let nsText = text as NSString
         let fullRange = NSRange(location: 0, length: nsText.length)
-        let types = NSTextCheckingResult.CheckingType.spelling.rawValue
+
+        // Detect the window's dominant language and bail early if it's Arabic
+        // but no Arabic dictionary is installed — otherwise NSSpellChecker
+        // would flag every Arabic word as misspelled against the English dict.
+        let windowLang = language(for: text)
+        if windowLang == "ar" && !arabicAvailable { return [] }
+
+        // Point the checker at the right language so spelling + grammar run
+        // against the correct dictionary. `setLanguage` returns false if the
+        // language isn't available; we already guarded Arabic above.
+        _ = checker.setLanguage(windowLang)
+
+        // Arabic grammar checking isn't supported by NSSpellChecker; only run
+        // the grammar checker for English.
+        let types: NSTextCheckingTypes
+        if windowLang == "ar" {
+            types = NSTextCheckingResult.CheckingType.spelling.rawValue
+        } else {
+            types = NSTextCheckingResult.CheckingType.spelling.rawValue
                   | NSTextCheckingResult.CheckingType.grammar.rawValue
+        }
 
         var orthography: NSOrthography?
         var wordCount: Int = 0
@@ -108,13 +144,13 @@ actor GrammarChecker {
                 // Skip capitalized words — almost always proper nouns
                 // (names like "Almansour", places like "Riyadh") that the
                 // checker has no entry for and "fixes" to something wrong.
-                // We still get sentence-start corrections via the LLM grammar
-                // path when enabled.
+                // Arabic has no case, so this is naturally a no-op there.
                 if let first = original.first, first.isUppercase { continue }
+                let wordLang = language(for: original)
                 let guesses = checker.guesses(
                     forWordRange: result.range,
                     in: text,
-                    language: language,
+                    language: wordLang,
                     inSpellDocumentWithTag: docTag
                 ) ?? []
                 guard let top = guesses.first,

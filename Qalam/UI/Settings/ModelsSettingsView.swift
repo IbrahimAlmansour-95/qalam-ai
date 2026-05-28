@@ -230,6 +230,9 @@ struct ModelsSettingsView: View {
                             if entry.recommended {
                                 QTag(text: "Recommended", style: .warning, icon: "star.fill")
                             }
+                            if entry.goodAtArabic {
+                                QTag(text: L.t(.modelGoodForArabic), style: .success, icon: "character.book.closed")
+                            }
                         }
 
                         Text(entry.description)

@@ -42,6 +42,9 @@ struct QModelCard: View {
                         QTag(text: entry.speed.label,
                              style: entry.speed == .fast ? .accent : .neutral,
                              icon: entry.speed.icon)
+                        if entry.goodAtArabic {
+                            QTag(text: "ع", style: .success)
+                        }
                     }
                 }
                 .padding(.vertical, 10)

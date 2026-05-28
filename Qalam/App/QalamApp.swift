@@ -90,14 +90,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     lastText = text
                     if text.isEmpty {
                         GhostTextOverlayWindow.shared.hide()
-                    } else {
+                    } else if let caret = AccessibilityMonitor.shared.caretFrame() {
                         let hint = AppDelegate.hint(for: suggestion)
-                        let point = AppDelegate.overlayAnchor()
-                        if let point {
-                            GhostTextOverlayWindow.shared.update(text: text, hint: hint, screenPoint: point)
-                        } else {
-                            GhostTextOverlayWindow.shared.hide()
-                        }
+                        let style = AccessibilityMonitor.shared.caretStyle()
+                        let rtl = AppDelegate.isRTLText(text)
+                        GhostTextOverlayWindow.shared.update(
+                            text: text, hint: hint, style: style, caret: caret, isRTL: rtl)
+                    } else {
+                        // No trustworthy caret (e.g. Electron canvas editors) —
+                        // hide rather than draw at a wrong location.
+                        GhostTextOverlayWindow.shared.hide()
                     }
                 }
                 try? await Task.sleep(nanoseconds: 60_000_000)
@@ -105,34 +107,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Decides where the ghost-text overlay should appear.
-    /// Strategy ladder:
-    ///   1. Real AX caret bounds (`kAXBoundsForRangeParameterizedAttribute`)
-    ///      — works for native AppKit / Cocoa text fields.
-    ///   2. Focused element's frame *top-left + small offset* — better than
-    ///      bottom-left, which lands far below the actual caret in tall fields.
-    ///   3. System mouse position — least accurate but at least near where the
-    ///      user is interacting (helps with Electron apps that don't expose
-    ///      caret bounds).
-    /// Returns the (x, topY) where the ghost-text overlay's TOP-LEFT should
-    /// sit in AppKit screen coords. The overlay then positions itself so the
-    /// text's top aligns with the caret line's top — matching the typed text's
-    /// visual line so the suggestion looks inline.
-    private static func overlayAnchor() -> CGPoint? {
-        if let caret = AccessibilityMonitor.shared.caretFrame(), caret.width >= 0 {
-            // `caret.maxY` is the TOP of the caret line in AppKit (Y up).
-            // Place the overlay's TOP-LEFT there, just to the right of the
-            // caret's right edge.
-            return CGPoint(x: caret.maxX + 1, y: caret.maxY)
+    /// True when the suggestion text is predominantly Arabic (RTL). Drives
+    /// both the overlay's placement (left of caret) and its layout direction.
+    private static func isRTLText(_ text: String) -> Bool {
+        var rtl = 0, ltr = 0
+        for scalar in text.unicodeScalars {
+            let v = scalar.value
+            if (0x0600...0x06FF).contains(v) || (0x0750...0x077F).contains(v) ||
+               (0xFB50...0xFDFF).contains(v) || (0xFE70...0xFEFF).contains(v) {
+                rtl += 1
+            } else if (0x0041...0x005A).contains(v) || (0x0061...0x007A).contains(v) {
+                ltr += 1
+            }
         }
-        if let frame = AccessibilityMonitor.shared.focusedFrame() {
-            // No caret bounds (Cursor/VSCode/Electron). Place a hair below the
-            // top of the focused area — close to first-line typing.
-            return CGPoint(x: frame.minX + 8, y: frame.maxY - 4)
-        }
-        let mouse = NSEvent.mouseLocation
-        guard mouse != .zero else { return nil }
-        return CGPoint(x: mouse.x + 14, y: mouse.y)
+        return rtl > ltr
     }
 
     private static func hint(for suggestion: SuggestionResult?) -> GhostStyleHint {

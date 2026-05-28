@@ -162,33 +162,133 @@ final class AccessibilityMonitor {
         var range = CFRange(location: 0, length: 0)
         guard AXValueGetValue(axRange, .cfRange, &range) else { return nil }
 
-        // Try the exact caret range first (length 0). Some apps return a
-        // zero-width vertical rect right at the cursor — that's the most
-        // accurate anchor. If we get a zero-area rect back, fall back to
-        // probing the character before the cursor.
-        var rect: CGRect = .zero
-        if let r = boundsForRange(CFRange(location: range.location, length: 0), in: element),
-           r.height > 0 {
-            rect = r
-        } else if range.location > 0,
-                  let r = boundsForRange(CFRange(location: range.location - 1, length: 1),
-                                         in: element) {
-            rect = r
-        } else if let r = boundsForRange(CFRange(location: range.location, length: 1),
-                                         in: element) {
-            rect = r
-        } else {
-            return nil
+        // The element's own AX frame (top-left origin) — we validate the
+        // caret rect against it so we never anchor on the wrong line or a
+        // bogus (0,0) rect.
+        let elementRect = rawElementRect(element)
+
+        // Probe order, taking the first plausible rect:
+        //   1. exact caret (length 0) — most apps return a zero-width vertical
+        //      rect right at the cursor; the most accurate anchor.
+        //   2. the character BEFORE the cursor (length 1) — the just-typed glyph.
+        //   3. the character AFTER the cursor (length 1).
+        let candidates: [CFRange] = [
+            CFRange(location: range.location, length: 0),
+            range.location > 0 ? CFRange(location: range.location - 1, length: 1) : nil,
+            CFRange(location: range.location, length: 1),
+        ].compactMap { $0 }
+
+        var rect: CGRect?
+        for probe in candidates {
+            guard let r = boundsForRange(probe, in: element) else { continue }
+            if isPlausibleCaretRect(r, within: elementRect) {
+                rect = r
+                break
+            }
         }
+        guard let caret = rect else { return nil }
 
         // AX returns top-left origin coordinates relative to the primary
         // screen's frame. Convert to AppKit bottom-left.
         guard let screen = NSScreen.screens.first(where: {
-                NSPointInRect(NSPoint(x: rect.origin.x, y: rect.origin.y), $0.frame)
+                NSPointInRect(NSPoint(x: caret.origin.x, y: caret.origin.y), $0.frame)
               }) ?? NSScreen.main
-        else { return rect }
-        let flippedY = screen.frame.maxY - rect.origin.y - rect.height
-        return CGRect(x: rect.origin.x, y: flippedY, width: rect.width, height: rect.height)
+        else { return caret }
+        let flippedY = screen.frame.maxY - caret.origin.y - caret.height
+        return CGRect(x: caret.origin.x, y: flippedY, width: caret.width, height: caret.height)
+    }
+
+    /// A caret rect is trustworthy only if it has real height, isn't pinned to
+    /// the screen origin (some apps return (0,0,0,0) when they can't resolve a
+    /// range), and — when we know the element's frame — actually sits inside
+    /// that element. The last check is what stops us anchoring on line 1 when
+    /// the cursor is really on line 3 of a multi-line field.
+    private func isPlausibleCaretRect(_ rect: CGRect, within element: CGRect?) -> Bool {
+        guard rect.height >= 1, rect.height < 200 else { return false }
+        if rect.origin.x == 0, rect.origin.y == 0 { return false }
+        if let element, element.width > 0, element.height > 0 {
+            // Allow a little slack for descenders / sub-pixel rounding.
+            let slack: CGFloat = 4
+            let expanded = element.insetBy(dx: -slack, dy: -slack)
+            // The caret's vertical midpoint must fall within the element.
+            let mid = CGPoint(x: rect.midX, y: rect.midY)
+            if !expanded.contains(mid) { return false }
+        }
+        return true
+    }
+
+    /// Raw AX frame of an element (top-left origin), or nil.
+    private func rawElementRect(_ element: AXUIElement) -> CGRect? {
+        var posRef: AnyObject?
+        var sizeRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
+              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success,
+              let posValue = posRef, let sizeValue = sizeRef
+        else { return nil }
+        var origin = CGPoint.zero
+        var size = CGSize.zero
+        let axPos = posValue as! AXValue
+        let axSize = sizeValue as! AXValue
+        guard AXValueGetValue(axPos, .cgPoint, &origin),
+              AXValueGetValue(axSize, .cgSize, &size)
+        else { return nil }
+        return CGRect(origin: origin, size: size)
+    }
+
+    /// The visual style of the text at the caret — host font + color — so the
+    /// ghost overlay can render in the SAME typeface/size/color and read as
+    /// inline text rather than a pasted-on overlay. Falls back to sensible
+    /// defaults when the app doesn't expose attributed text.
+    struct CaretStyle: Sendable, Equatable {
+        var fontName: String?   // PostScript name, e.g. "Helvetica"
+        var pointSize: CGFloat  // resolved point size
+        var rgba: [CGFloat]?    // host text color components (sRGB), if known
+    }
+
+    func caretStyle() -> CaretStyle {
+        let fallback = CaretStyle(fontName: nil, pointSize: 14, rgba: nil)
+        let systemWide = AXUIElementCreateSystemWide()
+        var focused: AnyObject?
+        guard AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let elementUnwrapped = focused
+        else { return fallback }
+        let element = elementUnwrapped as! AXUIElement
+
+        // Resolve a 1-char range around the cursor to query its run attributes.
+        var rangeRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeRef) == .success,
+              let rangeValue = rangeRef
+        else { return fallback }
+        var sel = CFRange(location: 0, length: 0)
+        guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &sel) else { return fallback }
+
+        let loc = max(0, sel.location - 1)
+        var probe = CFRange(location: loc, length: 1)
+        guard let probeVal = AXValueCreate(.cfRange, &probe) else { return fallback }
+
+        var attrRef: AnyObject?
+        let err = AXUIElementCopyParameterizedAttributeValue(
+            element,
+            "AXAttributedStringForRange" as CFString,
+            probeVal,
+            &attrRef
+        )
+        guard err == .success, let attr = attrRef as? NSAttributedString, attr.length > 0 else {
+            return fallback
+        }
+
+        var style = fallback
+        let attrs = attr.attributes(at: 0, effectiveRange: nil)
+        if let font = attrs[.font] as? NSFont {
+            style.fontName = font.fontName
+            style.pointSize = font.pointSize
+        }
+        if let color = attrs[.foregroundColor] as? NSColor,
+           let srgb = color.usingColorSpace(.sRGB) {
+            style.rgba = [srgb.redComponent, srgb.greenComponent,
+                          srgb.blueComponent, srgb.alphaComponent]
+        }
+        return style
     }
 
     /// Asks AX for the bounding rect of a text range. Returns the raw rect in
