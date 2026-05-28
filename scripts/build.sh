@@ -177,22 +177,10 @@ cp Qalam/Info.plist "$CONTENTS/Info.plist"
 echo "→ Writing PkgInfo..."
 printf 'APPL????' > "$CONTENTS/PkgInfo"
 
-# Signing. If QALAM_SIGN_IDENTITY is set (a "Developer ID Application: …"
-# identity) we sign for distribution with hardened runtime so the app can be
-# notarized and opened on any Mac without quarantine prompts. Otherwise we fall
-# back to ad-hoc (fine on the build machine only).
-if [[ -n "${QALAM_SIGN_IDENTITY:-}" ]]; then
-    echo "→ Codesigning with Developer ID: $QALAM_SIGN_IDENTITY"
-    codesign --force --deep --options runtime --timestamp \
-      --entitlements Qalam/Resources/Qalam.entitlements \
-      --sign "$QALAM_SIGN_IDENTITY" \
-      "$APP_BUNDLE"
-else
-    echo "→ Ad-hoc codesigning with entitlements (set QALAM_SIGN_IDENTITY to sign for distribution)..."
-    codesign --force --deep --sign - \
-      --entitlements Qalam/Resources/Qalam.entitlements \
-      "$APP_BUNDLE"
-fi
+echo "→ Ad-hoc codesigning with entitlements..."
+codesign --force --deep --sign - \
+  --entitlements Qalam/Resources/Qalam.entitlements \
+  "$APP_BUNDLE"
 
 echo "→ Verifying arm64..."
 BINARY="$MACOS_DIR/$APP_NAME"

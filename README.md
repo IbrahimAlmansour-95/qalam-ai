@@ -130,27 +130,15 @@ scripts/
 
 ## Distributing to other Macs
 
-The shipped DMG is **ad-hoc signed**, not notarized. That's fine on the build machine, but any *other* Mac quarantines it on download and Gatekeeper blocks it with *"QalamAI.app can't be opened."* Recipients on Apple Silicon can bypass it with `scripts/Fix-QalamAI-Open.command` or `xattr -dr com.apple.quarantine /Applications/QalamAI.app` (see [Troubleshooting](#troubleshooting)).
+The shipped DMG is **ad-hoc signed** (no Apple Developer account). On the build machine it just runs; on any *other* Apple Silicon Mac, macOS quarantines it on download and Gatekeeper blocks it with *"QalamAI.app can't be opened."* Recipients clear it once with either:
 
-To distribute without that friction you need a **paid Apple Developer account** ($99/yr), then sign with a Developer ID and notarize:
+- double-click `scripts/Fix-QalamAI-Open.command` (bundled in the repo), or
+- `xattr -dr com.apple.quarantine /Applications/QalamAI.app` in Terminal, or
+- **System Settings → Privacy & Security → Open Anyway**.
 
-```bash
-# 1. Sign with your Developer ID (hardened runtime + our entitlements)
-codesign --force --deep --options runtime \
-  --entitlements Qalam/Resources/Qalam.entitlements \
-  --sign "Developer ID Application: Your Name (TEAMID)" \
-  build/Export/QalamAI.app
+See [Troubleshooting](#troubleshooting). (Intel Macs can't run it at all — QalamAI is arm64-only.)
 
-# 2. Repackage the DMG (scripts/package-dmg.sh), then notarize it
-xcrun notarytool submit build/QalamAI-1.0.0-arm64.dmg \
-  --apple-id "you@example.com" --team-id "TEAMID" \
-  --password "app-specific-password" --wait
-
-# 3. Staple the ticket so it works offline
-xcrun stapler staple build/QalamAI-1.0.0-arm64.dmg
-```
-
-After stapling, the DMG opens on any Apple Silicon Mac with no warnings. (Intel Macs still can't run it — QalamAI is arm64-only.)
+> If you later get a paid Apple Developer account, signing with a Developer ID + notarizing the DMG removes this step entirely. It's intentionally not wired up here since the project ships unsigned.
 
 ## Architecture notes
 
@@ -169,7 +157,7 @@ QalamAI is **ad-hoc signed**, not notarized through a paid Apple Developer accou
 - **Terminal:** `xattr -dr com.apple.quarantine /Applications/QalamAI.app` then open it normally.
 - **GUI:** try to open it, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
 
-The permanent fix is Developer ID signing + notarization (requires a paid Apple Developer account). See [Distributing to other Macs](#distributing-to-other-macs).
+This is a one-time step per download. See [Distributing to other Macs](#distributing-to-other-macs).
 
 **"Needs access" red badge in the menu bar:** Open System Settings → Privacy & Security → Accessibility, remove any stale QalamAI entry, then re-add (the app will trigger the prompt). The app auto-detects the flip and reinstalls the keystroke tap within 2 s, no restart needed.
 
