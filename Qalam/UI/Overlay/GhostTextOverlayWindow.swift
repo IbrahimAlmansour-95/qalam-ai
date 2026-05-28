@@ -34,6 +34,10 @@ final class GhostTextOverlayWindow {
         self.panel = p
     }
 
+    /// `screenPoint` is the desired TOP-LEFT of the overlay in AppKit screen
+    /// coords (bottom-left origin). We translate it to a bottom-left frame
+    /// internally. The SwiftUI text uses topLeading alignment, so the text's
+    /// top edge matches the caret line's top — visually inline with typing.
     func update(text: String, hint: GhostStyleHint = .completion, screenPoint: CGPoint) {
         if text.isEmpty {
             hide()
@@ -42,9 +46,15 @@ final class GhostTextOverlayWindow {
         viewModel.text = text
         viewModel.hint = hint
         let size = hostingController.view.fittingSize
-        let width = max(160, min(560, size.width + 16))
-        let height = max(20, size.height + 8)
-        panel.setFrame(NSRect(x: screenPoint.x, y: screenPoint.y, width: width, height: height), display: true)
+        let width = max(40, min(560, ceil(size.width) + 2))
+        let height = max(16, ceil(size.height))
+        // NSWindow frames are bottom-left origin. screenPoint is top-left, so
+        // subtract the height to get the bottom-left coordinate.
+        panel.setFrame(NSRect(x: screenPoint.x,
+                              y: screenPoint.y - height,
+                              width: width,
+                              height: height),
+                       display: true)
         if !panel.isVisible {
             panel.orderFrontRegardless()
         }
@@ -81,12 +91,20 @@ struct GhostTextView: View {
         // SF Pro at 14 pt blends with most app text (Mail, Notes, browsers,
         // Cursor, etc.) much better than monospace — the goal is to feel like
         // native predictive text, not a Terminal-style overlay.
+        //
+        // The frame(maxWidth/maxHeight) + alignment:.bottomLeading pins the
+        // text to the bottom of the NSPanel content view so its baseline
+        // sits at the caret baseline (the panel's bottom edge).
         Text(model.text)
             .font(.system(size: 14, weight: .regular))
             .foregroundStyle(foreground)
-            .padding(.horizontal, 1)
-            .padding(.vertical, 0)
+            .lineLimit(1)
             .fixedSize(horizontal: true, vertical: true)
+            // Top-leading: text's top edge sits at the panel's top, which is
+            // anchored at the caret line's top. Combined with matching font
+            // size (14 pt), this puts the ghost glyphs on the same baseline
+            // as what the user is typing.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     /// Color only — no pill background, no icon. The overlay reads as inline

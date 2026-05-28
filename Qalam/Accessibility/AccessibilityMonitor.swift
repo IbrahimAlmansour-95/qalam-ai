@@ -159,31 +159,27 @@ final class AccessibilityMonitor {
         else { return nil }
         let axRange = rangeValue as! AXValue
 
-        // Normalize the range to length 1 so AX returns a meaningful rect even
-        // for a zero-length caret. Use the previous char if at end.
         var range = CFRange(location: 0, length: 0)
         guard AXValueGetValue(axRange, .cfRange, &range) else { return nil }
-        var probeRange = range
-        if probeRange.length == 0 {
-            probeRange.length = 1
-            if probeRange.location > 0 {
-                probeRange.location -= 1
-            }
-        }
-        var mutableProbe = probeRange
-        guard let probeValue = AXValueCreate(.cfRange, &mutableProbe) else { return nil }
 
-        var boundsRef: AnyObject?
-        let err = AXUIElementCopyParameterizedAttributeValue(
-            element,
-            kAXBoundsForRangeParameterizedAttribute as CFString,
-            probeValue,
-            &boundsRef
-        )
-        guard err == .success, let boundsValue = boundsRef else { return nil }
-        let axBounds = boundsValue as! AXValue
-        var rect = CGRect.zero
-        guard AXValueGetValue(axBounds, .cgRect, &rect) else { return nil }
+        // Try the exact caret range first (length 0). Some apps return a
+        // zero-width vertical rect right at the cursor — that's the most
+        // accurate anchor. If we get a zero-area rect back, fall back to
+        // probing the character before the cursor.
+        var rect: CGRect = .zero
+        if let r = boundsForRange(CFRange(location: range.location, length: 0), in: element),
+           r.height > 0 {
+            rect = r
+        } else if range.location > 0,
+                  let r = boundsForRange(CFRange(location: range.location - 1, length: 1),
+                                         in: element) {
+            rect = r
+        } else if let r = boundsForRange(CFRange(location: range.location, length: 1),
+                                         in: element) {
+            rect = r
+        } else {
+            return nil
+        }
 
         // AX returns top-left origin coordinates relative to the primary
         // screen's frame. Convert to AppKit bottom-left.
@@ -193,6 +189,25 @@ final class AccessibilityMonitor {
         else { return rect }
         let flippedY = screen.frame.maxY - rect.origin.y - rect.height
         return CGRect(x: rect.origin.x, y: flippedY, width: rect.width, height: rect.height)
+    }
+
+    /// Asks AX for the bounding rect of a text range. Returns the raw rect in
+    /// AX coords (top-left origin) — caller is responsible for flipping.
+    private func boundsForRange(_ range: CFRange, in element: AXUIElement) -> CGRect? {
+        var mutable = range
+        guard let value = AXValueCreate(.cfRange, &mutable) else { return nil }
+        var boundsRef: AnyObject?
+        let err = AXUIElementCopyParameterizedAttributeValue(
+            element,
+            kAXBoundsForRangeParameterizedAttribute as CFString,
+            value,
+            &boundsRef
+        )
+        guard err == .success, let boundsValue = boundsRef else { return nil }
+        let axBounds = boundsValue as! AXValue
+        var rect = CGRect.zero
+        guard AXValueGetValue(axBounds, .cgRect, &rect) else { return nil }
+        return rect
     }
 
     /// Frame of the focused element, in screen coordinates (top-left origin

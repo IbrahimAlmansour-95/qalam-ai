@@ -105,6 +105,12 @@ actor GrammarChecker {
                 // for someone mid-typing. Require ≥ 4 letters before offering
                 // a spelling fix.
                 guard original.count >= 4 else { continue }
+                // Skip capitalized words — almost always proper nouns
+                // (names like "Almansour", places like "Riyadh") that the
+                // checker has no entry for and "fixes" to something wrong.
+                // We still get sentence-start corrections via the LLM grammar
+                // path when enabled.
+                if let first = original.first, first.isUppercase { continue }
                 let guesses = checker.guesses(
                     forWordRange: result.range,
                     in: text,

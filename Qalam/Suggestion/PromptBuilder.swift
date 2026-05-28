@@ -6,38 +6,49 @@ enum PromptBuilder {
                       mode: WritingMode,
                       maxWords: Int) -> String {
         let n = max(1, maxWords)
-        // Range hint adapts to the user-configured ceiling so the prompt
-        // matches what we actually want.
-        let rangeHint: String
-        if n == 1 { rangeHint = "ONLY the single next word" }
-        else if n <= 3 { rangeHint = "ONLY the next 1-\(n) words" }
-        else { rangeHint = "ONLY the next 1-\(n) words (prefer the shortest natural completion)" }
+
+        // Target length nudge — get the model to actually USE the budget for
+        // multi-word completions when the context allows, instead of always
+        // taking the easy 1-word route.
+        let lengthDirective: String
+        if n == 1 {
+            lengthDirective = "Output ONLY the single next word."
+        } else if n <= 3 {
+            lengthDirective = "Output the next 2-\(n) words when possible — at minimum the next word."
+        } else {
+            lengthDirective = "Output the next 3-\(n) words to give the user a useful, contextual continuation. Never output a full sentence past \(n) words."
+        }
 
         let basePrompt = """
-        You are an inline autocomplete engine, like macOS's built-in predictive text.
+        You are an inline autocomplete engine, like macOS's built-in QuickType predictive text.
 
-        TASK: Output \(rangeHint) the user is most likely to type next.
+        TASK: Given the user's text so far, output the next words they are most \
+        likely to type, written in the SAME tone, casing, language, and style.
+
+        \(lengthDirective)
 
         HARD RULES:
-        - Output AT MOST \(n) words. Never write a full sentence past that.
-        - No preamble, no quotes, no explanation, no punctuation unless the very next \
-          character is naturally punctuation.
-        - Match the user's language EXACTLY. If they're writing in Arabic, respond in \
-          Arabic. Spanish → Spanish. Hinglish (Hindi + English code-switching) → match. \
-          Norwegian → Norwegian. Same script, same direction, same diacritics.
-        - Match the user's existing tone, casing, and personal vocabulary.
-        - If you are unsure or the user just finished a thought, output an empty line.
-        - Do NOT rephrase what the user already typed.
+        - Never write more than \(n) words.
+        - Never repeat or paraphrase what the user already typed. Begin with the \
+          NEXT word after their cursor, not a rewording of what's there.
+        - No preamble, no quotes, no labels, no explanation.
+        - No trailing punctuation unless the next character is naturally punctuation.
+        - Match the user's language EXACTLY (English → English, Arabic → Arabic, \
+          Spanish → Spanish, Hinglish → Hinglish, Norwegian → Norwegian).
+        - If you are genuinely unsure, output an empty line.
 
-        Examples (\(n) word budget):
+        Good examples (\(n)-word budget):
+          Input:  "Hi my name is"
+          Output: "\(n >= 3 ? "Ibrahim and I" : (n >= 2 ? "Ibrahim Almansour" : "Ibrahim"))"
+
+          Input:  "Please find attached the"
+          Output: "\(n >= 3 ? "document you requested" : (n >= 2 ? "document you" : "document"))"
+
           Input:  "I'll meet you at the"
-          Output: "\(n >= 2 ? "office tomorrow" : "office")"
-
-          Input:  "Hello my name is"
-          Output: "Ibrahim"
+          Output: "\(n >= 3 ? "office at three" : (n >= 2 ? "office tomorrow" : "office"))"
 
           Input:  "اسمي إبراهيم وأنا"
-          Output: "\(n >= 2 ? "أعمل في" : "أعمل")"
+          Output: "\(n >= 3 ? "أعمل في الرياض" : (n >= 2 ? "أعمل في" : "أعمل"))"
         """
 
         var parts: [String] = [basePrompt]
@@ -46,9 +57,10 @@ enum PromptBuilder {
         }
         let trimmedStyle = styleContext.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedStyle.isEmpty {
-            parts.append("Recent style examples: \(trimmedStyle)")
+            parts.append("Recent style examples (match this voice): \(trimmedStyle)")
         }
-        parts.append(textBeforeCursor)
+        parts.append("User's text so far:\n\(textBeforeCursor)")
+        parts.append("Your output (next \(n == 1 ? "word only" : "1-\(n) words only"), nothing else):")
         return parts.joined(separator: "\n\n")
     }
 }
