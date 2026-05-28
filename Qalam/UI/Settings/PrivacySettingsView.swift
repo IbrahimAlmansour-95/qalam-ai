@@ -6,6 +6,13 @@ struct PrivacySettingsView: View {
     @State private var styleEntries: Int = 0
     @State private var showResetConfirm = false
     @State private var showClearStyleConfirm = false
+    @State private var dataFootprint = ""
+    @State private var confirmUninstall: UninstallChoice?
+
+    private enum UninstallChoice: Identifiable {
+        case keepData, everything
+        var id: Int { self == .keepData ? 0 : 1 }
+    }
 
     var body: some View {
         ScrollView {
@@ -15,6 +22,7 @@ struct PrivacySettingsView: View {
                 compatibilityCard
                 historyCard
                 usageCard
+                uninstallCard
             }
             .padding(QSpacing.xl)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -25,6 +33,69 @@ struct PrivacySettingsView: View {
                 weekly = await UsageLogger.shared.dailyHistory(days: 7)
                 styleEntries = await StyleContextBuffer.shared.count()
             }
+            dataFootprint = Uninstaller.dataFootprint()
+        }
+        .alert(item: $confirmUninstall) { choice in
+            Alert(
+                title: Text(L.t(.uninstallTitle)),
+                message: Text(choice == .keepData ? L.t(.uninstallConfirmKeep)
+                                                   : L.t(.uninstallConfirmAll)),
+                primaryButton: .destructive(
+                    Text(choice == .keepData ? L.t(.uninstallKeepData) : L.t(.uninstallEverything)),
+                    action: { Uninstaller.uninstall(keepData: choice == .keepData) }
+                ),
+                secondaryButton: .cancel(Text(L.t(.uninstallCancel)))
+            )
+        }
+    }
+
+    private var uninstallCard: some View {
+        QCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L.t(.uninstallTitle))
+                    .font(QFonts.bodyMed)
+                    .foregroundStyle(QColors.textPrimary)
+                Text(L.t(.uninstallBody))
+                    .font(QFonts.caption)
+                    .foregroundStyle(QColors.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button { Uninstaller.revealDataInFinder() } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "folder")
+                        Text(dataFootprint.isEmpty
+                             ? L.t(.uninstallReveal)
+                             : "\(L.t(.uninstallReveal)) · \(dataFootprint)")
+                    }
+                    .font(QFonts.caption)
+                    .foregroundStyle(QColors.accent)
+                }
+                .buttonStyle(.plain)
+
+                QDivider()
+
+                uninstallOption(title: L.t(.uninstallKeepData),
+                                help: L.t(.uninstallKeepDataHelp),
+                                destructive: false) { confirmUninstall = .keepData }
+                uninstallOption(title: L.t(.uninstallEverything),
+                                help: L.t(.uninstallEverythingHelp),
+                                destructive: true) { confirmUninstall = .everything }
+            }
+        }
+    }
+
+    private func uninstallOption(title: String, help: String,
+                                 destructive: Bool, action: @escaping () -> Void) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(QFonts.body).foregroundStyle(QColors.textPrimary)
+                Text(help).font(QFonts.caption).foregroundStyle(QColors.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            QButton(title: L.t(.commonDelete), icon: "trash",
+                    style: destructive ? .destructive : .secondary, size: .small,
+                    action: action)
         }
     }
 

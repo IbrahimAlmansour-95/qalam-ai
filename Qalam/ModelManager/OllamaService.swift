@@ -223,6 +223,14 @@ actor OllamaService {
         setState(.stopped)
     }
 
+    /// Terminate the bundled `ollama serve` process we launched (used on
+    /// uninstall / quit). No-op if we didn't start one.
+    func stopServer() {
+        serveProcess?.terminate()
+        serveProcess = nil
+        setState(.stopped)
+    }
+
     /// Periodic health check (every 10s).
     func startHealthChecks() {
         Task { [weak self] in
