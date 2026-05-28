@@ -100,6 +100,9 @@ echo "→ Compiling Swift → $MACOS_DIR/$APP_NAME ..."
   -framework CoreGraphics \
   -framework Carbon \
   -framework ServiceManagement \
+  -framework Vision \
+  -framework ScreenCaptureKit \
+  -framework FoundationModels \
   -o "$MACOS_DIR/$APP_NAME" \
   $SOURCES
 

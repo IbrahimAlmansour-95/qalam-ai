@@ -58,7 +58,7 @@ struct ModelsSettingsView: View {
         VStack(alignment: .leading, spacing: QSpacing.s) {
             scopePicker
                 .padding(.top, QSpacing.m)
-            QTextField(placeholder: "Search models", text: $searchText, icon: "magnifyingglass")
+            QTextField(placeholder: L.t(.modelsSearch), text: $searchText, icon: "magnifyingglass")
 
             filterChips
 
@@ -135,7 +135,7 @@ struct ModelsSettingsView: View {
                 .foregroundStyle(QColors.textTertiary)
                 .multilineTextAlignment(.center)
             if scope == .installed {
-                QButton(title: "Browse all", style: .ghost, size: .small) {
+                QButton(title: L.t(.modelsBrowseAll), style: .ghost, size: .small) {
                     scope = .all
                 }
             }
@@ -189,7 +189,7 @@ struct ModelsSettingsView: View {
             Image(systemName: "cube.box")
                 .font(.system(size: 56, weight: .light))
                 .foregroundStyle(QColors.textTertiary)
-            Text("Select a model to view details")
+            Text(L.t(.modelsSelectPrompt))
                 .font(QFonts.body)
                 .foregroundStyle(QColors.textSecondary)
             Spacer()
@@ -350,7 +350,7 @@ struct ModelsSettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 switch status {
                 case .notInstalled:
-                    QButton(title: "Download Model", icon: "arrow.down.circle.fill",
+                    QButton(title: L.t(.modelsDownload), icon: "arrow.down.circle.fill",
                             style: .primary, size: .large, fullWidth: true) {
                         modelManager.startDownload(entry)
                     }
@@ -358,7 +358,7 @@ struct ModelsSettingsView: View {
                     downloadProgressView(entry: entry, fraction: fraction)
                 case .installed:
                     HStack(spacing: 10) {
-                        QButton(title: "Use This Model", icon: "checkmark.circle.fill",
+                        QButton(title: L.t(.modelsUseThis), icon: "checkmark.circle.fill",
                                 style: .primary, size: .medium) {
                             prefs.activeModelTag = entry.ollamaTag
                         }

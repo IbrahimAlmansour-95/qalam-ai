@@ -52,7 +52,19 @@ final class SuggestionEngine {
     private(set) var currentSuggestion: SuggestionResult?
     private(set) var isStreaming = false
 
-    private let backend: any LLMBackend = OllamaBackend()
+    private let ollamaBackend: any LLMBackend = OllamaBackend()
+    private let appleBackend: any LLMBackend = AppleIntelligenceBackend()
+
+    /// Resolves the active backend from preferences, falling back to Ollama
+    /// when Apple Intelligence is selected but unavailable.
+    private var backend: any LLMBackend {
+        if UserPreferences.shared.engine == "appleIntelligence",
+           AppleIntelligenceBackend.isAvailable {
+            return appleBackend
+        }
+        return ollamaBackend
+    }
+
     private let debouncer: Debouncer
     private var consumeTask: Task<Void, Never>?
     private var streamTask: Task<Void, Never>?
@@ -347,12 +359,32 @@ final class SuggestionEngine {
         let maxTokens = max(4, Int(Double(maxWords) * 1.6) + 2)
 
         let style = await StyleContextBuffer.shared.recentContext()
+        let prefs = UserPreferences.shared
+
+        // Gather opt-in context sources.
+        let clipboard = prefs.clipboardContextEnabled
+            ? ClipboardContextProvider.recentText() : nil
+        let surrounding = prefs.broaderContextEnabled
+            ? AccessibilityMonitor.shared.surroundingText() : nil
+        var screen: String? = nil
+        if prefs.screenContextEnabled {
+            let caret = AccessibilityMonitor.shared.caretFrame()
+            screen = await ScreenOCRContext.shared.visualContext(around: caret)
+        }
+        // Don't feed the clipboard back if it's just what the user already typed.
+        let clipboardContext = (clipboard.map { !context.textBeforeCursor.contains($0) } ?? false)
+            ? clipboard : nil
+
         let prompt = PromptBuilder.build(
             textBeforeCursor: context.textBeforeCursor,
             styleContext: style,
             mode: mode,
             maxWords: maxWords,
-            appName: context.appName
+            appName: context.appName,
+            textAfterCursor: context.textAfterCursor,
+            surroundingContext: surrounding,
+            clipboardContext: clipboardContext,
+            screenContext: screen
         )
 
         isStreaming = true

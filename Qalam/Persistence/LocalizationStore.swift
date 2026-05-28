@@ -116,6 +116,68 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     case generalMaxWordsModelCap     // "Model max: {n}"
     case generalExcludedApps
     case generalExcludedAppsHelp
+    // Engine + context
+    case generalEngine
+    case generalEngineHelp
+    case engineOllama
+    case engineAppleIntelligence
+    case generalContextSources
+    case generalContextSourcesHelp
+    case ctxBroader
+    case ctxBroaderHelp
+    case ctxClipboard
+    case ctxClipboardHelp
+    case ctxScreen
+    case ctxScreenHelp
+    case ctxScreenGrant
+    case generalAddApp
+    // Modes tab
+    case modesHeading
+    case modesBuiltIn
+    case modesCustom
+    case modesCustomHelp
+    case modesNewMode
+    case modesNoCustom
+    case modesNewModeTitle
+    case modesName
+    case modesInstruction
+    case modesTemperature
+    case commonCancel
+    case commonCreate
+    case commonDelete
+    case commonUse
+    // Snippets tab
+    case snippetsHeading
+    case snippetsSubheading
+    case snippetsHowTitle
+    case snippetsNewTitle
+    case snippetsExpansion
+    case snippetsAdd
+    case snippetsYours
+    case snippetsNone
+    // Shortcuts tab
+    case shortcutsHeading
+    case shortcutsSubheading
+    case shortcutAcceptWord
+    case shortcutAcceptLine
+    case shortcutDismiss
+    case shortcutPauseResume
+    case shortcutPauseHelp
+    // Privacy tab
+    case privacyHeading
+    case privacySubheading
+    case privacyLast7Days
+    case privacyLocalTitle
+    case privacyWordsToday
+    case privacyStyleEntries
+    case privacyClearStyle
+    case privacyResetStats
+    // Models tab
+    case modelsSelectPrompt
+    case modelsDownload
+    case modelsUseThis
+    case modelsBrowseAll
+    case modelsSearch
 
     // Menu bar popover
     case popoverEnableSuggestions
@@ -380,6 +442,133 @@ enum Translations {
             .english: "Good for Arabic",
             .arabic:  "مناسب للعربية"
         ],
+
+        // ━━━ Engine ━━━
+        .generalEngine: [
+            .english: "Inference engine",
+            .arabic:  "محرّك الاستدلال"
+        ],
+        .generalEngineHelp: [
+            .english: "Choose which on-device model generates suggestions.",
+            .arabic:  "اختر النموذج المحلي الذي يولّد الاقتراحات."
+        ],
+        .engineOllama: [
+            .english: "Local models",
+            .arabic:  "النماذج المحلية"
+        ],
+        .engineAppleIntelligence: [
+            .english: "Apple Intelligence",
+            .arabic:  "Apple Intelligence"
+        ],
+
+        // ━━━ Context sources ━━━
+        .generalContextSources: [
+            .english: "Context sources",
+            .arabic:  "مصادر السياق"
+        ],
+        .generalContextSourcesHelp: [
+            .english: "Extra context makes completions more relevant. Everything stays on your Mac.",
+            .arabic:  "السياق الإضافي يجعل الاقتراحات أكثر ملاءمة. يبقى كل شيء على جهازك."
+        ],
+        .ctxBroader: [
+            .english: "Read nearby on-screen text",
+            .arabic:  "قراءة النص المجاور على الشاشة"
+        ],
+        .ctxBroaderHelp: [
+            .english: "Uses Accessibility to read surrounding text (e.g. the thread above a reply box). No extra permission.",
+            .arabic:  "يستخدم إمكانية الوصول لقراءة النص المحيط (مثل المحادثة فوق صندوق الرد). لا يحتاج صلاحية إضافية."
+        ],
+        .ctxClipboard: [
+            .english: "Use clipboard as context",
+            .arabic:  "استخدام الحافظة كسياق"
+        ],
+        .ctxClipboardHelp: [
+            .english: "Feeds recent clipboard text to the model. Off by default for privacy.",
+            .arabic:  "يُمرّر نص الحافظة الأخير إلى النموذج. مُعطّل افتراضياً للخصوصية."
+        ],
+        .ctxScreen: [
+            .english: "Read screen near cursor (OCR)",
+            .arabic:  "قراءة الشاشة قرب المؤشر (OCR)"
+        ],
+        .ctxScreenHelp: [
+            .english: "Captures and reads text around your cursor for apps that don't expose it. Requires Screen Recording permission.",
+            .arabic:  "يلتقط ويقرأ النص حول المؤشر للتطبيقات التي لا تُتيحه. يتطلب صلاحية تسجيل الشاشة."
+        ],
+        .ctxScreenGrant: [
+            .english: "Grant Screen Recording",
+            .arabic:  "منح صلاحية تسجيل الشاشة"
+        ],
+        .generalAddApp: [.english: "Add app", .arabic: "إضافة تطبيق"],
+
+        // ━━━ Modes tab ━━━
+        .modesHeading:    [.english: "Writing Modes", .arabic: "أنماط الكتابة"],
+        .modesBuiltIn:    [.english: "BUILT-IN", .arabic: "جاهزة"],
+        .modesCustom:     [.english: "Custom modes", .arabic: "أنماط مخصّصة"],
+        .modesCustomHelp: [
+            .english: "Define your own voice — for example, \"Translate to French\" or \"Make it shorter\".",
+            .arabic:  "عرّف أسلوبك الخاص — مثل «ترجم إلى الفرنسية» أو «اجعله أقصر»."
+        ],
+        .modesNewMode:      [.english: "New mode", .arabic: "نمط جديد"],
+        .modesNoCustom:     [.english: "No custom modes yet.", .arabic: "لا توجد أنماط مخصّصة بعد."],
+        .modesNewModeTitle: [.english: "New writing mode", .arabic: "نمط كتابة جديد"],
+        .modesName:         [.english: "Name", .arabic: "الاسم"],
+        .modesInstruction:  [.english: "Instruction", .arabic: "التعليمات"],
+        .modesTemperature:  [.english: "Temperature", .arabic: "درجة الإبداع"],
+        .commonCancel:      [.english: "Cancel", .arabic: "إلغاء"],
+        .commonCreate:      [.english: "Create", .arabic: "إنشاء"],
+        .commonDelete:      [.english: "Delete", .arabic: "حذف"],
+        .commonUse:         [.english: "Use", .arabic: "استخدام"],
+
+        // ━━━ Snippets tab ━━━
+        .snippetsHeading: [.english: "Snippets", .arabic: "المختصرات"],
+        .snippetsSubheading: [
+            .english: "Short triggers that expand into longer text. Type ':trigger' anywhere and press Tab.",
+            .arabic:  "اختصارات قصيرة تتوسّع إلى نص أطول. اكتب «:trigger» في أي مكان واضغط Tab."
+        ],
+        .snippetsHowTitle:  [.english: "How it works", .arabic: "كيف يعمل"],
+        .snippetsNewTitle:  [.english: "New snippet", .arabic: "مختصر جديد"],
+        .snippetsExpansion: [.english: "Expansion", .arabic: "النص الموسّع"],
+        .snippetsAdd:       [.english: "Add Snippet", .arabic: "إضافة مختصر"],
+        .snippetsYours:     [.english: "Your snippets", .arabic: "مختصراتك"],
+        .snippetsNone:      [.english: "No snippets yet.", .arabic: "لا توجد مختصرات بعد."],
+
+        // ━━━ Shortcuts tab ━━━
+        .shortcutsHeading: [.english: "Shortcuts", .arabic: "الاختصارات"],
+        .shortcutsSubheading: [
+            .english: "Keys that interact with suggestions and QalamAI itself.",
+            .arabic:  "المفاتيح التي تتفاعل مع الاقتراحات ومع QalamAI نفسه."
+        ],
+        .shortcutAcceptWord: [.english: "Accept next word", .arabic: "قبول الكلمة التالية"],
+        .shortcutAcceptLine: [.english: "Accept full line", .arabic: "قبول السطر كاملاً"],
+        .shortcutDismiss:    [.english: "Dismiss suggestion", .arabic: "تجاهل الاقتراح"],
+        .shortcutPauseResume:[.english: "Pause / Resume", .arabic: "إيقاف مؤقت / استئناف"],
+        .shortcutPauseHelp:  [
+            .english: "Toggle QalamAI without leaving your keyboard.",
+            .arabic:  "تبديل تشغيل QalamAI دون مغادرة لوحة المفاتيح."
+        ],
+
+        // ━━━ Privacy tab ━━━
+        .privacyHeading: [.english: "Privacy", .arabic: "الخصوصية"],
+        .privacySubheading: [
+            .english: "All processing is local. Your text never leaves your Mac.",
+            .arabic:  "كل المعالجة محلية. لا يغادر نصّك جهازك أبداً."
+        ],
+        .privacyLast7Days:   [.english: "Last 7 days", .arabic: "آخر ٧ أيام"],
+        .privacyLocalTitle:  [.english: "Local-first by design", .arabic: "محلي أولاً بالتصميم"],
+        .privacyWordsToday:  [.english: "Words completed today", .arabic: "الكلمات المُكمَلة اليوم"],
+        .privacyStyleEntries:[.english: "Style context entries", .arabic: "مدخلات سياق الأسلوب"],
+        .privacyClearStyle:  [.english: "Clear Style History", .arabic: "مسح سجل الأسلوب"],
+        .privacyResetStats:  [.english: "Reset Statistics", .arabic: "إعادة تعيين الإحصائيات"],
+
+        // ━━━ Models tab ━━━
+        .modelsSelectPrompt: [
+            .english: "Select a model to view details",
+            .arabic:  "اختر نموذجاً لعرض التفاصيل"
+        ],
+        .modelsDownload:  [.english: "Download Model", .arabic: "تنزيل النموذج"],
+        .modelsUseThis:   [.english: "Use This Model", .arabic: "استخدام هذا النموذج"],
+        .modelsBrowseAll: [.english: "Browse all", .arabic: "تصفّح الكل"],
+        .modelsSearch:    [.english: "Search models", .arabic: "بحث في النماذج"],
         .popoverCompatibility: [
             .english: "COMPATIBILITY",
             .arabic:  "التوافق مع التطبيقات"

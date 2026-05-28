@@ -51,6 +51,33 @@ final class UserPreferences {
         didSet { defaults.set(firstLaunchDate.timeIntervalSince1970, forKey: Keys.firstLaunchDate) }
     }
 
+    // MARK: - Context sources (all opt-in, privacy-sensitive)
+
+    /// Inject recent clipboard text into the prompt as extra context.
+    var clipboardContextEnabled: Bool {
+        didSet { defaults.set(clipboardContextEnabled, forKey: Keys.clipboardContextEnabled) }
+    }
+    /// Read the whole focused field + nearby on-screen text via Accessibility
+    /// (e.g. the email thread above a reply box) and feed it as surrounding
+    /// context. Permission-free; on by default since it just uses AX we
+    /// already have.
+    var broaderContextEnabled: Bool {
+        didSet { defaults.set(broaderContextEnabled, forKey: Keys.broaderContextEnabled) }
+    }
+    /// Capture a screenshot around the caret and OCR it for visual context.
+    /// Requires Screen Recording permission; off by default.
+    var screenContextEnabled: Bool {
+        didSet { defaults.set(screenContextEnabled, forKey: Keys.screenContextEnabled) }
+    }
+
+    // MARK: - Inference engine
+
+    /// "ollama" (bundled local models) or "appleIntelligence" (on-device
+    /// Foundation Model, macOS 26+).
+    var engine: String {
+        didSet { defaults.set(engine, forKey: Keys.engine) }
+    }
+
     private init() {
         defaults.register(defaults: [
             Keys.isEnabled: true,
@@ -65,6 +92,10 @@ final class UserPreferences {
             Keys.autoCorrectEnabled: true,
             Keys.autoGrammarEnabled: false,
             Keys.maxSuggestionWords: 5,
+            Keys.clipboardContextEnabled: false,
+            Keys.broaderContextEnabled: true,
+            Keys.screenContextEnabled: false,
+            Keys.engine: "ollama",
             // DO NOT register firstLaunchDate as a fallback — register's
             // value shifts every launch (it's a fresh Date()), which masks
             // the on-disk read with a non-zero in-memory default and the
@@ -83,6 +114,10 @@ final class UserPreferences {
         self.autoCorrectEnabled     = defaults.bool(forKey: Keys.autoCorrectEnabled)
         self.autoGrammarEnabled     = defaults.bool(forKey: Keys.autoGrammarEnabled)
         self.maxSuggestionWords     = max(1, defaults.integer(forKey: Keys.maxSuggestionWords))
+        self.clipboardContextEnabled = defaults.bool(forKey: Keys.clipboardContextEnabled)
+        self.broaderContextEnabled   = defaults.bool(forKey: Keys.broaderContextEnabled)
+        self.screenContextEnabled    = defaults.bool(forKey: Keys.screenContextEnabled)
+        self.engine                  = defaults.string(forKey: Keys.engine) ?? "ollama"
         // Persist firstLaunchDate explicitly on the very first run; didSet
         // doesn't fire during init.
         // `object(forKey:)` returns nil if no real value is stored — unlike
@@ -111,5 +146,9 @@ final class UserPreferences {
         static let autoGrammarEnabled     = "qalam.autoGrammarEnabled"
         static let maxSuggestionWords     = "qalam.maxSuggestionWords"
         static let firstLaunchDate        = "qalam.firstLaunchDate"
+        static let clipboardContextEnabled = "qalam.clipboardContextEnabled"
+        static let broaderContextEnabled   = "qalam.broaderContextEnabled"
+        static let screenContextEnabled    = "qalam.screenContextEnabled"
+        static let engine                  = "qalam.engine"
     }
 }

@@ -21,10 +21,10 @@ struct SnippetsSettingsView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Snippets")
+            Text(L.t(.snippetsHeading))
                 .font(QFonts.display)
                 .foregroundStyle(QColors.textPrimary)
-            Text("Short triggers that expand into longer text. Type ':trigger' anywhere and press Tab.")
+            Text(L.t(.snippetsSubheading))
                 .font(QFonts.body)
                 .foregroundStyle(QColors.textSecondary)
         }
@@ -37,7 +37,7 @@ struct SnippetsSettingsView: View {
                     .font(.system(size: 24))
                     .foregroundStyle(QColors.accent)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("How it works")
+                    Text(L.t(.snippetsHowTitle))
                         .font(QFonts.bodyMed)
                         .foregroundStyle(QColors.textPrimary)
                     Text("Type ':sig' in any text field — \(Constants.appName) shows the expansion as a ghost suggestion. Press Tab to accept.")
@@ -53,7 +53,7 @@ struct SnippetsSettingsView: View {
     private var addCard: some View {
         QCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("New snippet")
+                Text(L.t(.snippetsNewTitle))
                     .font(QFonts.bodyMed)
                     .foregroundStyle(QColors.textPrimary)
                 HStack {
@@ -63,7 +63,7 @@ struct SnippetsSettingsView: View {
                     QTextField(placeholder: "trigger (e.g. addr)", text: $draftTrigger)
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Expansion")
+                    Text(L.t(.snippetsExpansion))
                         .font(QFonts.caption)
                         .foregroundStyle(QColors.textTertiary)
                     TextEditor(text: $draftExpansion)
@@ -80,7 +80,7 @@ struct SnippetsSettingsView: View {
                 }
                 HStack {
                     Spacer()
-                    QButton(title: "Add Snippet", icon: "plus.circle.fill",
+                    QButton(title: L.t(.snippetsAdd), icon: "plus.circle.fill",
                             style: .primary, size: .medium,
                             disabled: draftTrigger.trimmingCharacters(in: .whitespaces).isEmpty
                                    || draftExpansion.trimmingCharacters(in: .whitespaces).isEmpty) {
@@ -96,11 +96,11 @@ struct SnippetsSettingsView: View {
     private var listCard: some View {
         QCard {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Your snippets")
+                Text(L.t(.snippetsYours))
                     .font(QFonts.bodyMed)
                     .foregroundStyle(QColors.textPrimary)
                 if store.snippets.isEmpty {
-                    Text("No snippets yet.")
+                    Text(L.t(.snippetsNone))
                         .font(QFonts.caption)
                         .foregroundStyle(QColors.textTertiary)
                 } else {

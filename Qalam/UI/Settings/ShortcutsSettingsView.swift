@@ -15,10 +15,10 @@ struct ShortcutsSettingsView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Shortcuts")
+            Text(L.t(.shortcutsHeading))
                 .font(QFonts.display)
                 .foregroundStyle(QColors.textPrimary)
-            Text("Keys that interact with suggestions and Qalam itself.")
+            Text(L.t(.shortcutsSubheading))
                 .font(QFonts.body)
                 .foregroundStyle(QColors.textSecondary)
         }
@@ -27,11 +27,11 @@ struct ShortcutsSettingsView: View {
     private var fixedShortcutsCard: some View {
         QCard {
             VStack(alignment: .leading, spacing: 14) {
-                shortcutRow(label: "Accept next word", keys: ["Tab"])
+                shortcutRow(label: L.t(.shortcutAcceptWord), keys: ["Tab"])
                 QDivider()
-                shortcutRow(label: "Accept full line", keys: ["⇧", "Tab"])
+                shortcutRow(label: L.t(.shortcutAcceptLine), keys: ["⇧", "Tab"])
                 QDivider()
-                shortcutRow(label: "Dismiss suggestion", keys: ["Esc"])
+                shortcutRow(label: L.t(.shortcutDismiss), keys: ["Esc"])
                 QDivider()
                 shortcutRow(label: "Open settings", keys: ["⌘", ","])
             }
@@ -43,10 +43,10 @@ struct ShortcutsSettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Pause / Resume")
+                        Text(L.t(.shortcutPauseResume))
                             .font(QFonts.bodyMed)
                             .foregroundStyle(QColors.textPrimary)
-                        Text("Toggle Qalam without leaving your keyboard.")
+                        Text(L.t(.shortcutPauseHelp))
                             .font(QFonts.caption)
                             .foregroundStyle(QColors.textTertiary)
                     }

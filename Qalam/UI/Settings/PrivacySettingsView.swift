@@ -65,7 +65,7 @@ struct PrivacySettingsView: View {
         QCard {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Last 7 days")
+                    Text(L.t(.privacyLast7Days))
                         .font(QFonts.bodyMed)
                         .foregroundStyle(QColors.textPrimary)
                     Spacer()
@@ -82,10 +82,10 @@ struct PrivacySettingsView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Privacy")
+            Text(L.t(.privacyHeading))
                 .font(QFonts.display)
                 .foregroundStyle(QColors.textPrimary)
-            Text("All processing is local. Your text never leaves your Mac.")
+            Text(L.t(.privacySubheading))
                 .font(QFonts.body)
                 .foregroundStyle(QColors.textSecondary)
         }
@@ -98,7 +98,7 @@ struct PrivacySettingsView: View {
                     .font(.system(size: 36, weight: .light))
                     .foregroundStyle(QColors.accent)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Local-first by design")
+                    Text(L.t(.privacyLocalTitle))
                         .font(QFonts.title)
                         .foregroundStyle(QColors.textPrimary)
                     Text("\(Constants.appName) runs a bundled Ollama engine on 127.0.0.1. There is no telemetry, no usage tracking, and no remote inference path.")
@@ -115,7 +115,7 @@ struct PrivacySettingsView: View {
         QCard {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Text("Words completed today")
+                    Text(L.t(.privacyWordsToday))
                         .font(QFonts.body)
                         .foregroundStyle(QColors.textSecondary)
                     Spacer()
@@ -127,7 +127,7 @@ struct PrivacySettingsView: View {
                 QDivider()
 
                 HStack {
-                    Text("Style context entries")
+                    Text(L.t(.privacyStyleEntries))
                         .font(QFonts.body)
                         .foregroundStyle(QColors.textSecondary)
                     Spacer()
@@ -139,14 +139,14 @@ struct PrivacySettingsView: View {
                 QDivider()
 
                 HStack(spacing: 10) {
-                    QButton(title: "Clear Style History", icon: "trash",
+                    QButton(title: L.t(.privacyClearStyle), icon: "trash",
                             style: .destructive, size: .medium) {
                         Task {
                             await StyleContextBuffer.shared.clear()
                             styleEntries = await StyleContextBuffer.shared.count()
                         }
                     }
-                    QButton(title: "Reset Statistics", style: .ghost, size: .medium) {
+                    QButton(title: L.t(.privacyResetStats), style: .ghost, size: .medium) {
                         Task {
                             await UsageLogger.shared.resetStatistics()
                             stats = await UsageLogger.shared.snapshot()
