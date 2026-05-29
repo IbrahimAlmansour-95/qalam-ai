@@ -240,7 +240,7 @@ struct ModelsSettingsView: View {
                 .foregroundStyle(active ? .white : QColors.textSecondary)
                 .padding(.vertical, 4)
                 .padding(.horizontal, 9)
-                .background(active ? QColors.accent : Color.white.opacity(0.06))
+                .background(active ? QColors.accent : QColors.fillSubtle)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)

@@ -12,7 +12,7 @@ struct QProgressBar: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: height / 2, style: .continuous)
-                    .fill(Color.white.opacity(0.08))
+                    .fill(QColors.fillMedium)
 
                 RoundedRectangle(cornerRadius: height / 2, style: .continuous)
                     .fill(tint)

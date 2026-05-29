@@ -108,7 +108,7 @@ struct QButton: View {
             case .secondary:
                 (isHovering ? QColors.backgroundElevated : QColors.backgroundSecondary)
             case .ghost:
-                Color.white.opacity(isHovering ? 0.06 : 0.0)
+                (isHovering ? QColors.fillSubtle : Color.clear)
             case .destructive:
                 QColors.destructive.opacity(isHovering ? 0.18 : 0.10)
             }

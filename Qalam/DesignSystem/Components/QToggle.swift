@@ -25,7 +25,7 @@ struct QToggle: View {
     private var switchTrack: some View {
         ZStack(alignment: isOn ? .trailing : .leading) {
             Capsule()
-                .fill(isOn ? QColors.accent : Color.white.opacity(0.12))
+                .fill(isOn ? QColors.accent : QColors.fillMedium)
                 .frame(width: 36, height: 20)
             Circle()
                 .fill(.white)

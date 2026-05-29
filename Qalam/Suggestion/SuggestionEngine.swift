@@ -69,6 +69,8 @@ final class SuggestionEngine {
     private var consumeTask: Task<Void, Never>?
     private var streamTask: Task<Void, Never>?
     private var lastContext: TextContext = .empty
+    /// How many times the user has cycled alternatives for the current context.
+    private var cycleCount = 0
 
     private init() {
         self.debouncer = Debouncer(intervalMs: Constants.Suggestion.defaultDelayMs)
@@ -122,6 +124,7 @@ final class SuggestionEngine {
         }
 
         lastContext = context
+        cycleCount = 0   // fresh context — reset the alternative cycle
 
         // Snippet pre-empt: if the line ends with ":<trigger>" (no trailing space yet),
         // surface the expansion immediately — no LLM call needed.
@@ -383,7 +386,29 @@ final class SuggestionEngine {
         )
     }
 
-    private func requestSuggestion(context: TextContext, model: String) async {
+    /// Cycle to an alternative completion for the SAME context — used by the
+    /// "next suggestion" key. Re-runs the model with a higher temperature and
+    /// an instruction to avoid the current text, so the user gets a genuinely
+    /// different option. Only meaningful for LLM completions.
+    func cycleAlternative() {
+        guard let current = currentSuggestion, !current.isEmpty else { return }
+        guard case .llm = current.kind else { return }
+        guard !lastContext.textBeforeCursor.isEmpty else { return }
+        cycleCount += 1
+        let avoid = current.text
+        let temp = min(0.95, 0.4 + Double(cycleCount) * 0.2)
+        Task { [lastContext] in
+            await requestSuggestion(context: lastContext,
+                                    model: UserPreferences.shared.activeModelTag,
+                                    temperatureOverride: temp,
+                                    avoidText: avoid)
+        }
+    }
+
+    private func requestSuggestion(context: TextContext,
+                                   model: String,
+                                   temperatureOverride: Double? = nil,
+                                   avoidText: String? = nil) async {
         streamTask?.cancel()
         let mode = WritingModeStore.shared.mode(id: UserPreferences.shared.activeModeID)
         let entry = ModelRegistry.entry(forTag: model)
@@ -409,7 +434,7 @@ final class SuggestionEngine {
         let clipboardContext = (clipboard.map { !context.textBeforeCursor.contains($0) } ?? false)
             ? clipboard : nil
 
-        let prompt = PromptBuilder.build(
+        var prompt = PromptBuilder.build(
             textBeforeCursor: context.textBeforeCursor,
             styleContext: style,
             mode: mode,
@@ -421,17 +446,22 @@ final class SuggestionEngine {
             screenContext: screen,
             personalInfo: PersonalInfoStore.shared.promptBlock()
         )
+        // When cycling, steer the model away from the option just shown.
+        if let avoid = avoidText, !avoid.isEmpty {
+            prompt += "\n\nProvide a DIFFERENT continuation than: \"\(avoid)\""
+        }
+        let temperature = temperatureOverride ?? mode.temperature
 
         isStreaming = true
         var assembled = ""
 
-        streamTask = Task { [weak self, backend, mode, maxWords] in
+        streamTask = Task { [weak self, backend, maxWords] in
             do {
                 for try await token in backend.complete(
                     prompt: prompt,
                     model: model,
                     maxTokens: maxTokens,
-                    temperature: mode.temperature,
+                    temperature: temperature,
                     stop: ["\n\n", "###"]
                 ) {
                     try Task.checkCancellation()

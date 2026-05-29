@@ -90,7 +90,7 @@ struct OnboardingView: View {
                         .foregroundStyle(l10n.current == lang ? .white : QColors.textSecondary)
                         .padding(.vertical, 5)
                         .padding(.horizontal, 12)
-                        .background(l10n.current == lang ? QColors.accent : Color.white.opacity(0.06))
+                        .background(l10n.current == lang ? QColors.accent : QColors.fillSubtle)
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -479,7 +479,7 @@ struct OnboardingView: View {
         HStack(spacing: 8) {
             ForEach(OnboardingStep.allCases) { s in
                 Circle()
-                    .fill(s.rawValue == step.rawValue ? QColors.accent : Color.white.opacity(0.12))
+                    .fill(s.rawValue == step.rawValue ? QColors.accent : QColors.fillMedium)
                     .frame(width: 8, height: 8)
             }
         }

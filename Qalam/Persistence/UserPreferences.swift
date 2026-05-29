@@ -115,6 +115,14 @@ final class UserPreferences {
         didSet { defaults.set(customModelTags, forKey: Keys.customModelTags) }
     }
 
+    /// UI theme: "system" (follow macOS), "light", or "dark".
+    var appearance: String {
+        didSet {
+            defaults.set(appearance, forKey: Keys.appearance)
+            AppearanceManager.apply(appearance)
+        }
+    }
+
     private init() {
         defaults.register(defaults: [
             Keys.isEnabled: true,
@@ -138,6 +146,7 @@ final class UserPreferences {
             Keys.acceptWordKey: "tab",
             Keys.showAcceptHint: true,
             Keys.customModelTags: [String](),
+            Keys.appearance: "system",
             // DO NOT register firstLaunchDate as a fallback — register's
             // value shifts every launch (it's a fresh Date()), which masks
             // the on-disk read with a non-zero in-memory default and the
@@ -165,6 +174,7 @@ final class UserPreferences {
         self.acceptWordKey           = defaults.string(forKey: Keys.acceptWordKey) ?? "tab"
         self.showAcceptHint          = defaults.bool(forKey: Keys.showAcceptHint)
         self.customModelTags         = (defaults.array(forKey: Keys.customModelTags) as? [String]) ?? []
+        self.appearance              = defaults.string(forKey: Keys.appearance) ?? "system"
         if let raw = defaults.object(forKey: Keys.snoozeUntil) as? Double {
             self.snoozeUntil = Date(timeIntervalSince1970: raw)
         } else {
@@ -208,5 +218,6 @@ final class UserPreferences {
         static let showAcceptHint          = "qalam.showAcceptHint"
         static let snoozeUntil             = "qalam.snoozeUntil"
         static let customModelTags         = "qalam.customModelTags"
+        static let appearance              = "qalam.appearance"
     }
 }

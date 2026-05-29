@@ -19,7 +19,7 @@ enum QTagStyle {
 
     var background: Color {
         switch self {
-        case .neutral:     return Color.white.opacity(0.06)
+        case .neutral:     return QColors.fillSubtle
         case .accent:      return QColors.accent.opacity(0.15)
         case .success:     return QColors.success.opacity(0.15)
         case .warning:     return QColors.warning.opacity(0.15)
