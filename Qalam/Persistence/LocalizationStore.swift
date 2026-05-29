@@ -264,6 +264,25 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     case diagnosticsHelp
     case diagnosticsCopy
     case diagnosticsCopied
+    // ━━━ Appearance (General) ━━━
+    case generalAppearance
+    case generalAppearanceSystem
+    case generalAppearanceLight
+    case generalAppearanceDark
+    // ━━━ In-app update install ━━━
+    case updateInstall
+    case updateDownloading
+    case updateOpening
+    case updateReady
+    // ━━━ Tone rewrite on selection ━━━
+    case rewriteTitle
+    case rewriteWorking
+    case rewriteFailed
+    case rewriteToneFormal
+    case rewriteToneCasual
+    case rewriteToneConcise
+    case rewriteToneExpand
+    case rewriteToneGrammar
 }
 
 enum Translations {
@@ -818,6 +837,25 @@ enum Translations {
         ],
         .diagnosticsCopy: [ .english: "Copy diagnostics", .arabic: "نسخ التشخيص" ],
         .diagnosticsCopied: [ .english: "Copied", .arabic: "تم النسخ" ],
+        // ━━━ Appearance ━━━
+        .generalAppearance: [ .english: "Appearance", .arabic: "المظهر" ],
+        .generalAppearanceSystem: [ .english: "System", .arabic: "النظام" ],
+        .generalAppearanceLight: [ .english: "Light", .arabic: "فاتح" ],
+        .generalAppearanceDark: [ .english: "Dark", .arabic: "داكن" ],
+        // ━━━ In-app update install ━━━
+        .updateInstall: [ .english: "Download & Install", .arabic: "تنزيل وتثبيت" ],
+        .updateDownloading: [ .english: "Downloading…", .arabic: "جارٍ التنزيل…" ],
+        .updateOpening: [ .english: "Opening installer…", .arabic: "فتح المثبّت…" ],
+        .updateReady: [ .english: "Ready — drag to Applications", .arabic: "جاهز — اسحب إلى التطبيقات" ],
+        // ━━━ Tone rewrite ━━━
+        .rewriteTitle: [ .english: "Rewrite selection", .arabic: "إعادة صياغة المحدّد" ],
+        .rewriteWorking: [ .english: "Rewriting", .arabic: "جارٍ إعادة الصياغة" ],
+        .rewriteFailed: [ .english: "Rewrite failed", .arabic: "تعذّرت إعادة الصياغة" ],
+        .rewriteToneFormal: [ .english: "Formal", .arabic: "رسمي" ],
+        .rewriteToneCasual: [ .english: "Casual", .arabic: "ودّي" ],
+        .rewriteToneConcise: [ .english: "Concise", .arabic: "موجز" ],
+        .rewriteToneExpand: [ .english: "Expand", .arabic: "توسيع" ],
+        .rewriteToneGrammar: [ .english: "Fix grammar", .arabic: "تصحيح القواعد" ],
     ]
 }
 

@@ -85,7 +85,7 @@ struct QModelCard: View {
 
     private var background: Color {
         if isSelected { return QColors.backgroundElevated }
-        if isHovering { return Color.white.opacity(0.03) }
+        if isHovering { return QColors.fillFaint }
         return QColors.backgroundSecondary
     }
 

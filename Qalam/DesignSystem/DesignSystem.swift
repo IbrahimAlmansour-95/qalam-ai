@@ -2,33 +2,59 @@ import SwiftUI
 import AppKit
 
 enum QColors {
-    static let backgroundPrimary   = Color(red: 18/255,  green: 18/255,  blue: 20/255)
-    static let backgroundSecondary = Color(red: 26/255,  green: 26/255,  blue: 30/255)
-    static let backgroundElevated  = Color(red: 34/255,  green: 34/255,  blue: 40/255)
+    /// A dynamic color that resolves per the drawing view's effective
+    /// appearance, so the whole UI follows the chosen Light / Dark / System
+    /// theme (set globally via `NSApp.appearance` in AppearanceManager).
+    /// `light` / `dark` are sRGB (red, green, blue, alpha) in 0…1.
+    private static func dyn(light: (CGFloat, CGFloat, CGFloat, CGFloat),
+                            dark:  (CGFloat, CGFloat, CGFloat, CGFloat)) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            let c = isDark ? dark : light
+            return NSColor(srgbRed: c.0, green: c.1, blue: c.2, alpha: c.3)
+        })
+    }
 
-    static let borderSubtle = Color.white.opacity(0.07)
-    static let borderMedium = Color.white.opacity(0.12)
+    private static func solid(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat = 1) -> Color {
+        Color(.sRGB, red: r / 255, green: g / 255, blue: b / 255, opacity: a)
+    }
 
-    static let accent      = Color(red: 99/255,  green: 102/255, blue: 241/255)
-    static let accentHover = Color(red: 118/255, green: 120/255, blue: 252/255)
+    static let backgroundPrimary   = dyn(light: (250/255, 250/255, 252/255, 1),
+                                          dark:  (18/255,  18/255,  20/255,  1))
+    static let backgroundSecondary = dyn(light: (242/255, 242/255, 246/255, 1),
+                                          dark:  (26/255,  26/255,  30/255,  1))
+    static let backgroundElevated  = dyn(light: (255/255, 255/255, 255/255, 1),
+                                          dark:  (34/255,  34/255,  40/255,  1))
 
-    static let textPrimary   = Color.white.opacity(0.92)
-    static let textSecondary = Color.white.opacity(0.52)
-    static let textTertiary  = Color.white.opacity(0.30)
+    static let borderSubtle = dyn(light: (0, 0, 0, 0.08), dark: (1, 1, 1, 0.07))
+    static let borderMedium = dyn(light: (0, 0, 0, 0.14), dark: (1, 1, 1, 0.12))
 
-    static let ghostText = Color(red: 99/255, green: 102/255, blue: 241/255).opacity(0.45)
+    static let accent      = solid(99, 102, 241)
+    static let accentHover = solid(118, 120, 252)
 
-    static let success     = Color(red: 52/255,  green: 211/255, blue: 153/255)
-    static let warning     = Color(red: 251/255, green: 191/255, blue: 36/255)
-    static let destructive = Color(red: 239/255, green: 68/255,  blue: 68/255)
+    static let textPrimary   = dyn(light: (0, 0, 0, 0.88), dark: (1, 1, 1, 0.92))
+    static let textSecondary = dyn(light: (0, 0, 0, 0.55), dark: (1, 1, 1, 0.52))
+    static let textTertiary  = dyn(light: (0, 0, 0, 0.38), dark: (1, 1, 1, 0.30))
+
+    static let ghostText = solid(99, 102, 241, 0.45)
+
+    static let success     = solid(52, 211, 153)
+    static let warning     = solid(251, 191, 36)
+    static let destructive = solid(239, 68, 68)
 
     // Family accents for QModelCard left borders
-    static let familyGemma  = Color(red: 59/255,  green: 130/255, blue: 246/255) // blue
-    static let familyQwen   = Color(red: 168/255, green: 85/255,  blue: 247/255) // purple
-    static let familyPhi    = Color(red: 249/255, green: 115/255, blue: 22/255)  // orange
-    static let familyLlama  = Color(red: 34/255,  green: 197/255, blue: 94/255)  // green
-    static let familySmol   = Color(red: 20/255,  green: 184/255, blue: 166/255) // teal
-    static let familyOther  = Color.white.opacity(0.4)
+    static let familyGemma  = solid(59, 130, 246)  // blue
+    static let familyQwen   = solid(168, 85, 247)  // purple
+    static let familyPhi    = solid(249, 115, 22)  // orange
+    static let familyLlama  = solid(34, 197, 94)   // green
+    static let familySmol   = solid(20, 184, 166)  // teal
+    static let familyOther  = dyn(light: (0, 0, 0, 0.4), dark: (1, 1, 1, 0.4))
+
+    // Adaptive neutral fills for chips, control tracks, and hover states —
+    // a faint dark wash in light mode, a faint light wash in dark mode.
+    static let fillSubtle = dyn(light: (0, 0, 0, 0.05), dark: (1, 1, 1, 0.06))
+    static let fillMedium = dyn(light: (0, 0, 0, 0.10), dark: (1, 1, 1, 0.12))
+    static let fillFaint  = dyn(light: (0, 0, 0, 0.03), dark: (1, 1, 1, 0.03))
 }
 
 enum QFonts {

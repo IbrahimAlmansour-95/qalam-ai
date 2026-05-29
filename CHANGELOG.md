@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0 — 2026-05-29
+
+- **Light mode** — new Appearance setting (System / Light / Dark) in General. The whole UI uses adaptive colors and follows your choice instantly.
+- **In-app update install** — "Download & Install" downloads the new DMG inside the app with a progress bar, then opens it for the drag-to-Applications step (no more bouncing to the browser).
+- **Multi-suggestion cycle** — press ⌥ ] while a completion is showing to regenerate a different alternative.
+- **Tone rewrite on selection** — select text in any app and press ⌃⌥R to rewrite it as Formal, Casual, Concise, Expanded, or grammar-fixed, in place.
+- Full Arabic localization for all of the above.
+
 ## 1.2.0 — 2026-05-29
 
 - **Configurable accept key** — accept the next word with Tab ⇥ (default) or the Right Arrow →. ⇧ + the key still accepts the whole suggestion.

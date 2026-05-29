@@ -101,6 +101,20 @@ final class KeystrokeInterceptor {
             }
             return nil   // consume
         }
+        // Option + ] (keyCode 30) cycles to an alternative completion.
+        if keyCode == 30 && flags.contains(.maskAlternate) && hasSuggestion {
+            MainActor.assumeIsolated {
+                SuggestionEngine.shared.cycleAlternative()
+            }
+            return nil   // consume
+        }
+        // Control + Option + R (keyCode 15) → tone-rewrite the current selection.
+        if keyCode == 15 && flags.contains(.maskControl) && flags.contains(.maskAlternate) {
+            MainActor.assumeIsolated {
+                SelectionRewriter.shared.begin()
+            }
+            return nil   // consume
+        }
 
         // Pump AX state after this key lands.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.012) {

@@ -28,6 +28,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Touch UserPreferences early so first-launch timestamp persists.
         _ = UserPreferences.shared.firstLaunchDate
 
+        // Apply the saved theme (Light / Dark / System) before any window shows.
+        AppearanceManager.applyCurrent()
+
         // Menu bar lives first so the user has a way to recover even if
         // permissions aren't granted yet.
         MenuBarController.shared.install()

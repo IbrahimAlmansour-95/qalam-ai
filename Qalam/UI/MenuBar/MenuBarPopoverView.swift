@@ -60,8 +60,18 @@ struct MenuBarPopoverView: View {
                     .foregroundStyle(QColors.textSecondary)
             }
             Spacer()
-            QButton(title: L.t(.updateDownload), style: .primary, size: .small) {
-                UpdateChecker.shared.openDownload()
+            switch updater.installState {
+            case .downloading(let frac):
+                Text("\(Int(frac * 100))%")
+                    .font(QFonts.caption).foregroundStyle(QColors.textSecondary)
+            case .mounting:
+                ProgressView().scaleEffect(0.5)
+            case .ready:
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(QColors.success)
+            case .idle, .failed:
+                QButton(title: L.t(.updateInstall), style: .primary, size: .small) {
+                    Task { await UpdateChecker.shared.downloadAndInstall() }
+                }
             }
         }
         .padding(.horizontal, QSpacing.l)
@@ -195,7 +205,7 @@ struct MenuBarPopoverView: View {
                 .foregroundStyle(QColors.textSecondary)
                 .padding(.vertical, 5)
                 .padding(.horizontal, 9)
-                .background(Color.white.opacity(0.06))
+                .background(QColors.fillSubtle)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -238,7 +248,7 @@ struct MenuBarPopoverView: View {
             .foregroundStyle(isActive ? .white : QColors.textSecondary)
             .padding(.vertical, 5)
             .padding(.horizontal, 9)
-            .background(isActive ? QColors.accent : Color.white.opacity(0.06))
+            .background(isActive ? QColors.accent : QColors.fillSubtle)
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)

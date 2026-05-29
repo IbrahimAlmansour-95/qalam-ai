@@ -20,6 +20,16 @@ final class UpdateChecker {
     enum CheckState: Equatable { case idle, checking, upToDate, found }
     private(set) var available: Release?
     private(set) var checkState: CheckState = .idle
+
+    /// In-app download/install of the new DMG.
+    enum InstallState: Equatable {
+        case idle
+        case downloading(Double)   // 0…1
+        case mounting
+        case ready                 // DMG opened for drag-install
+        case failed(String)
+    }
+    private(set) var installState: InstallState = .idle
     private var timer: Timer?
 
     /// `owner/repo` for the public releases API.
@@ -67,6 +77,77 @@ final class UpdateChecker {
     func openDownload() {
         guard let release = available else { return }
         NSWorkspace.shared.open(release.dmgURL ?? release.htmlURL)
+    }
+
+    // MARK: - In-app download & install
+
+    /// Download the new DMG with progress, then open (mount) it so the user can
+    /// drag QalamAI to Applications. We can't silently swap the bundle without
+    /// a Developer ID signature, so the standard drag-install flow is the safe,
+    /// honest path — but the download happens inside the app with a progress bar
+    /// instead of bouncing to a browser.
+    func downloadAndInstall() async {
+        guard let release = available, let dmgURL = release.dmgURL else {
+            // No direct asset — fall back to the release page.
+            openDownload()
+            return
+        }
+        installState = .downloading(0)
+        do {
+            let dest = try await download(dmgURL, version: release.version)
+            installState = .mounting
+            // Reveal + open the DMG; macOS mounts it and shows the drag window.
+            NSWorkspace.shared.activateFileViewerSelecting([dest])
+            NSWorkspace.shared.open(dest)
+            installState = .ready
+        } catch {
+            installState = .failed(error.localizedDescription)
+        }
+    }
+
+    func resetInstallState() { installState = .idle }
+
+    private func download(_ url: URL, version: String) async throws -> URL {
+        let (bytes, response) = try await URLSession.shared.bytes(from: url)
+        let total = response.expectedContentLength
+        let dir = updatesDirectory()
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let dest = dir.appendingPathComponent("QalamAI-\(version)-arm64.dmg")
+        if FileManager.default.fileExists(atPath: dest.path) {
+            try? FileManager.default.removeItem(at: dest)
+        }
+        FileManager.default.createFile(atPath: dest.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: dest)
+        defer { try? handle.close() }
+
+        var received: Int64 = 0
+        var buffer = Data()
+        buffer.reserveCapacity(1 << 16)
+        var lastReported = 0.0
+        for try await byte in bytes {
+            buffer.append(byte)
+            received += 1
+            if buffer.count >= (1 << 16) {
+                try handle.write(contentsOf: buffer)
+                buffer.removeAll(keepingCapacity: true)
+            }
+            if total > 0 {
+                let frac = Double(received) / Double(total)
+                if frac - lastReported >= 0.01 {
+                    lastReported = frac
+                    installState = .downloading(frac)
+                }
+            }
+        }
+        if !buffer.isEmpty { try handle.write(contentsOf: buffer) }
+        return dest
+    }
+
+    private func updatesDirectory() -> URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return base
+            .appendingPathComponent(Constants.appSupportDirName, isDirectory: true)
+            .appendingPathComponent("Updates", isDirectory: true)
     }
 
     // MARK: - Networking

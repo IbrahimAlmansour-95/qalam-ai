@@ -18,6 +18,7 @@ struct GeneralSettingsView: View {
             VStack(alignment: .leading, spacing: QSpacing.xl) {
                 header
                 languageCard
+                appearanceCard
                 engineCard
                 togglesCard
                 acceptKeyCard
@@ -167,6 +168,46 @@ struct GeneralSettingsView: View {
         }
     }
 
+    private var appearanceCard: some View {
+        QCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(L.t(.generalAppearance))
+                    .font(QFonts.bodyMed)
+                    .foregroundStyle(QColors.textPrimary)
+                HStack(spacing: 0) {
+                    appearanceSegment(L.t(.generalAppearanceSystem), value: "system", icon: "circle.lefthalf.filled")
+                    appearanceSegment(L.t(.generalAppearanceLight),  value: "light",  icon: "sun.max")
+                    appearanceSegment(L.t(.generalAppearanceDark),   value: "dark",   icon: "moon")
+                }
+                .padding(2)
+                .background(QColors.backgroundSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: QRadius.small + 1, style: .continuous)
+                        .strokeBorder(QColors.borderSubtle, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: QRadius.small + 1, style: .continuous))
+            }
+        }
+    }
+
+    private func appearanceSegment(_ title: String, value: String, icon: String) -> some View {
+        let active = prefs.appearance == value
+        return Button {
+            withAnimation(QAnimation.quick) { prefs.appearance = value }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: icon).font(.system(size: 11, weight: .medium))
+                Text(title).font(QFonts.caption).fontWeight(.medium)
+            }
+            .foregroundStyle(active ? .white : QColors.textSecondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(active ? QColors.accent : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: QRadius.small, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
     private var acceptKeyCard: some View {
         QCard {
             VStack(alignment: .leading, spacing: 14) {
@@ -256,14 +297,36 @@ struct GeneralSettingsView: View {
                             .font(QFonts.caption)
                             .foregroundStyle(QColors.success)
                     } else if let r = updater.available {
-                        QButton(title: "\(L.t(.updateDownload)) v\(r.version)",
-                                style: .primary, size: .small) {
-                            UpdateChecker.shared.openDownload()
-                        }
+                        updateInstallControl(r)
                     }
                     Spacer()
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func updateInstallControl(_ r: UpdateChecker.Release) -> some View {
+        switch updater.installState {
+        case .idle, .failed:
+            QButton(title: "\(L.t(.updateInstall)) v\(r.version)",
+                    icon: "arrow.down.circle.fill", style: .primary, size: .small) {
+                Task { await UpdateChecker.shared.downloadAndInstall() }
+            }
+            if case .failed(let msg) = updater.installState {
+                Text(msg).font(QFonts.caption).foregroundStyle(QColors.destructive)
+            }
+        case .downloading(let frac):
+            HStack(spacing: 6) {
+                ProgressView().scaleEffect(0.6).frame(width: 14, height: 14)
+                Text("\(L.t(.updateDownloading)) \(Int(frac * 100))%")
+                    .font(QFonts.caption).foregroundStyle(QColors.textSecondary)
+            }
+        case .mounting:
+            Text(L.t(.updateOpening)).font(QFonts.caption).foregroundStyle(QColors.textSecondary)
+        case .ready:
+            Label(L.t(.updateReady), systemImage: "checkmark.circle.fill")
+                .font(QFonts.caption).foregroundStyle(QColors.success)
         }
     }
 
