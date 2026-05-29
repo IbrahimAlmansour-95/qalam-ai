@@ -77,9 +77,15 @@ final class KeystrokeInterceptor {
             !(SuggestionEngine.shared.currentSuggestion?.isEmpty ?? true)
         }
 
-        // Tab = 48, Escape = 53
-        if keyCode == 48 && hasSuggestion {
-            // ⇧Tab = accept all, Tab = next word
+        // Key codes: Tab = 48, Escape = 53, Right Arrow = 124.
+        // The "accept next word" key is configurable (Tab or →). Whichever it
+        // is, holding Shift accepts the whole suggestion.
+        let acceptKeyCode: Int64 = MainActor.assumeIsolated {
+            UserPreferences.shared.acceptWordKey == "rightArrow" ? 124 : 48
+        }
+        if keyCode == acceptKeyCode && hasSuggestion {
+            // Right Arrow with no suggestion must still move the caret, so we
+            // only consume it when a suggestion is showing (guarded above).
             MainActor.assumeIsolated {
                 if shiftDown {
                     SuggestionEngine.shared.acceptAll()

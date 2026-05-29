@@ -20,6 +20,7 @@ struct GeneralSettingsView: View {
                 languageCard
                 engineCard
                 togglesCard
+                acceptKeyCard
                 correctionsCard
                 contextSourcesCard
                 suggestionLengthCard
@@ -164,6 +165,50 @@ struct GeneralSettingsView: View {
                 .foregroundStyle(QColors.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var acceptKeyCard: some View {
+        QCard {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(L.t(.generalAcceptKey))
+                        .font(QFonts.bodyMed)
+                        .foregroundStyle(QColors.textPrimary)
+                    HStack(spacing: 0) {
+                        acceptKeySegment(L.t(.generalAcceptKeyTab), value: "tab")
+                        acceptKeySegment(L.t(.generalAcceptKeyArrow), value: "rightArrow")
+                    }
+                    .padding(2)
+                    .background(QColors.backgroundSecondary)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: QRadius.small + 1, style: .continuous)
+                            .strokeBorder(QColors.borderSubtle, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: QRadius.small + 1, style: .continuous))
+                }
+                QDivider()
+                contextToggle(L.t(.generalShowAcceptHint), help: L.t(.generalShowAcceptHintHelp),
+                              isOn: Binding(get: { prefs.showAcceptHint },
+                                            set: { prefs.showAcceptHint = $0 }))
+            }
+        }
+    }
+
+    private func acceptKeySegment(_ title: String, value: String) -> some View {
+        let active = prefs.acceptWordKey == value
+        return Button {
+            withAnimation(QAnimation.quick) { prefs.acceptWordKey = value }
+        } label: {
+            Text(title)
+                .font(QFonts.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(active ? .white : QColors.textSecondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(active ? QColors.accent : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: QRadius.small, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private var togglesCard: some View {

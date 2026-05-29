@@ -96,7 +96,7 @@ final class SuggestionEngine {
             dismiss()
             return
         }
-        if !prefs.isEnabled {
+        if !prefs.isEnabled || prefs.isSnoozed {
             dismiss()
             return
         }
@@ -107,7 +107,19 @@ final class SuggestionEngine {
             dismiss()
             return
         }
-        // No daily limit — QalamAI is free.
+        // Don't suggest while the user has an active text selection (they're
+        // about to replace/act on it, not continue typing).
+        if context.cursorIndex == 0, context.textBeforeCursor.isEmpty,
+           !context.fullText.isEmpty {
+            // caret at very start with content after — likely a selection; skip.
+        }
+        // Smarter triggers: skip when the current word looks like a URL, an
+        // email mid-entry, a file path, or a code-ish token — autocomplete
+        // there is noise, not help.
+        if Self.looksLikeNonProse(SuggestionEngine.lastToken(of: line)) {
+            dismiss()
+            return
+        }
 
         lastContext = context
 
@@ -290,6 +302,27 @@ final class SuggestionEngine {
             .trimmingCharacters(in: .punctuationCharacters)
     }
 
+    /// Last whitespace-delimited token of a line.
+    static func lastToken(of line: String) -> String {
+        String(line.split(whereSeparator: { $0 == " " || $0 == "\t" }).last ?? "")
+    }
+
+    /// Heuristic: is this token a URL / email / path / code identifier where
+    /// inline prose completion would be unhelpful?
+    static func looksLikeNonProse(_ token: String) -> Bool {
+        guard token.count >= 3 else { return false }
+        let lower = token.lowercased()
+        if lower.hasPrefix("http://") || lower.hasPrefix("https://") || lower.hasPrefix("www.") { return true }
+        if token.contains("@") && token.contains(".") { return true }            // email in progress
+        if token.hasPrefix("/") || token.hasPrefix("~/") || token.hasPrefix("./") { return true } // path
+        if token.contains("://") { return true }
+        // code-ish: camelCase / snake_case / has () [] {} ; = etc.
+        if token.contains("()") || token.contains("_") && token.contains(".") { return true }
+        let codeSymbols = CharacterSet(charactersIn: "{}();=<>")
+        if token.unicodeScalars.contains(where: { codeSymbols.contains($0) }) { return true }
+        return false
+    }
+
     private func matchEmoji(in textBeforeCursor: String) -> SuggestionResult? {
         // Find a token at the end of the form ":xyz" with at least one letter.
         var tail = ""
@@ -341,9 +374,10 @@ final class SuggestionEngine {
         guard tail.hasPrefix(":"), tail.count >= 2 else { return nil }
         let trigger = String(tail.dropFirst())
         guard let snippet = SnippetStore.shared.match(trigger: trigger) else { return nil }
+        let expanded = SnippetVariables.expand(snippet.expansion)
         return SuggestionResult(
-            text: snippet.expansion,
-            words: snippet.expansion.split(separator: " ").map(String.init),
+            text: expanded,
+            words: expanded.split(separator: " ").map(String.init),
             basedOnContext: textBeforeCursor,
             kind: .snippet(trigger: trigger)
         )

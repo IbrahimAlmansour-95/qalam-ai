@@ -19,18 +19,33 @@ struct ModelsSettingsView: View {
     @State private var scope: ModelsScope = .all
     @State private var selectedTag: String? = nil
     @State private var confirmDeleteTag: String? = nil
+    @State private var showAddCustom: Bool = false
+    @State private var customTagInput: String = ""
 
     private func isInstalled(_ entry: ModelEntry) -> Bool {
         modelManager.installedTags.contains(entry.ollamaTag) ||
         modelManager.installedTags.contains(entry.ollamaTag + ":latest")
     }
 
+    /// Curated registry plus any user-imported custom tags (those not already
+    /// present in the catalog).
+    private var allEntries: [ModelEntry] {
+        let custom = prefs.customModelTags
+            .filter { tag in !ModelRegistry.all.contains { $0.ollamaTag == tag || $0.id == tag } }
+            .map { ModelRegistry.makeCustom(tag: $0) }
+        return ModelRegistry.all + custom
+    }
+
+    private func lookup(_ tag: String) -> ModelEntry? {
+        allEntries.first { $0.ollamaTag == tag || $0.id == tag }
+    }
+
     private var installedCount: Int {
-        ModelRegistry.all.reduce(0) { $0 + (isInstalled($1) ? 1 : 0) }
+        allEntries.reduce(0) { $0 + (isInstalled($1) ? 1 : 0) }
     }
 
     private var filteredModels: [ModelEntry] {
-        var list = ModelRegistry.entries(family: familyFilter)
+        var list = familyFilter == nil ? allEntries : allEntries.filter { $0.family == familyFilter }
         if !searchText.isEmpty {
             list = list.filter { entry in
                 entry.displayName.lowercased().contains(searchText.lowercased()) ||
@@ -80,9 +95,68 @@ struct ModelsSettingsView: View {
                     .padding(.bottom, QSpacing.l)
                 }
             }
+            addCustomArea
         }
         .padding(.horizontal, QSpacing.m)
         .frame(width: 220)
+    }
+
+    @ViewBuilder
+    private var addCustomArea: some View {
+        QDivider()
+        if showAddCustom {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L.t(.modelsAddCustomTitle))
+                    .font(QFonts.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(QColors.textSecondary)
+                Text(L.t(.modelsAddCustomHelp))
+                    .font(QFonts.caption)
+                    .foregroundStyle(QColors.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                QTextField(placeholder: L.t(.modelsAddCustomPlaceholder), text: $customTagInput, icon: "cube")
+                HStack(spacing: 6) {
+                    QButton(title: L.t(.modelsAddCustomButton), style: .primary, size: .small,
+                            disabled: !ModelRegistry.isValidCustomTag(customTagInput)) {
+                        addCustomTag()
+                    }
+                    QButton(title: "Cancel", style: .ghost, size: .small) {
+                        showAddCustom = false
+                        customTagInput = ""
+                    }
+                }
+            }
+            .padding(.vertical, QSpacing.s)
+        } else {
+            Button {
+                showAddCustom = true
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 11))
+                    Text(L.t(.modelsAddCustom))
+                        .font(QFonts.caption)
+                        .fontWeight(.medium)
+                }
+                .foregroundStyle(QColors.accent)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, QSpacing.s)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func addCustomTag() {
+        let tag = customTagInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard ModelRegistry.isValidCustomTag(tag) else { return }
+        if !prefs.customModelTags.contains(tag) {
+            prefs.customModelTags.append(tag)
+        }
+        selectedTag = tag
+        scope = .all
+        familyFilter = nil
+        customTagInput = ""
+        showAddCustom = false
     }
 
     private var scopePicker: some View {
@@ -176,7 +250,7 @@ struct ModelsSettingsView: View {
 
     @ViewBuilder
     private var detail: some View {
-        if let tag = selectedTag, let entry = ModelRegistry.entry(forTag: tag) {
+        if let tag = selectedTag, let entry = lookup(tag) {
             modelDetail(entry)
         } else {
             emptyState

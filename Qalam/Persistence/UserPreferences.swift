@@ -88,6 +88,33 @@ final class UserPreferences {
         didSet { defaults.set(autoUpdateEnabled, forKey: Keys.autoUpdateEnabled) }
     }
 
+    /// Which key accepts the next word: "tab" or "rightArrow".
+    var acceptWordKey: String {
+        didSet { defaults.set(acceptWordKey, forKey: Keys.acceptWordKey) }
+    }
+
+    /// Show a faint ⇥ hint at the end of the ghost text.
+    var showAcceptHint: Bool {
+        didSet { defaults.set(showAcceptHint, forKey: Keys.showAcceptHint) }
+    }
+
+    /// Suggestions are paused until this date (snooze). nil/past = active.
+    var snoozeUntil: Date? {
+        didSet {
+            if let d = snoozeUntil { defaults.set(d.timeIntervalSince1970, forKey: Keys.snoozeUntil) }
+            else { defaults.removeObject(forKey: Keys.snoozeUntil) }
+        }
+    }
+    var isSnoozed: Bool {
+        if let until = snoozeUntil { return Date() < until }
+        return false
+    }
+
+    /// User-added Ollama tags beyond the curated registry.
+    var customModelTags: [String] {
+        didSet { defaults.set(customModelTags, forKey: Keys.customModelTags) }
+    }
+
     private init() {
         defaults.register(defaults: [
             Keys.isEnabled: true,
@@ -108,6 +135,9 @@ final class UserPreferences {
             Keys.engine: "ollama",
             Keys.spaceAfterAccept: true,
             Keys.autoUpdateEnabled: true,
+            Keys.acceptWordKey: "tab",
+            Keys.showAcceptHint: true,
+            Keys.customModelTags: [String](),
             // DO NOT register firstLaunchDate as a fallback — register's
             // value shifts every launch (it's a fresh Date()), which masks
             // the on-disk read with a non-zero in-memory default and the
@@ -132,6 +162,14 @@ final class UserPreferences {
         self.engine                  = defaults.string(forKey: Keys.engine) ?? "ollama"
         self.spaceAfterAccept        = defaults.bool(forKey: Keys.spaceAfterAccept)
         self.autoUpdateEnabled       = defaults.bool(forKey: Keys.autoUpdateEnabled)
+        self.acceptWordKey           = defaults.string(forKey: Keys.acceptWordKey) ?? "tab"
+        self.showAcceptHint          = defaults.bool(forKey: Keys.showAcceptHint)
+        self.customModelTags         = (defaults.array(forKey: Keys.customModelTags) as? [String]) ?? []
+        if let raw = defaults.object(forKey: Keys.snoozeUntil) as? Double {
+            self.snoozeUntil = Date(timeIntervalSince1970: raw)
+        } else {
+            self.snoozeUntil = nil
+        }
         // Persist firstLaunchDate explicitly on the very first run; didSet
         // doesn't fire during init.
         // `object(forKey:)` returns nil if no real value is stored — unlike
@@ -166,5 +204,9 @@ final class UserPreferences {
         static let engine                  = "qalam.engine"
         static let spaceAfterAccept        = "qalam.spaceAfterAccept"
         static let autoUpdateEnabled       = "qalam.autoUpdateEnabled"
+        static let acceptWordKey           = "qalam.acceptWordKey"
+        static let showAcceptHint          = "qalam.showAcceptHint"
+        static let snoozeUntil             = "qalam.snoozeUntil"
+        static let customModelTags         = "qalam.customModelTags"
     }
 }

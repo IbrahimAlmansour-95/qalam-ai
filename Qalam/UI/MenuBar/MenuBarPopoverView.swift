@@ -27,6 +27,8 @@ struct MenuBarPopoverView: View {
                 }
                 enableRow
                 QDivider().padding(.horizontal, 0)
+                snoozeSection
+                QDivider().padding(.horizontal, 0)
                 modeSwitcherSection
                 QDivider().padding(.horizontal, 0)
                 activeModelSection
@@ -135,6 +137,75 @@ struct MenuBarPopoverView: View {
         }
         .padding(.horizontal, QSpacing.l)
         .padding(.vertical, QSpacing.m)
+    }
+
+    private var snoozeSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: prefs.isSnoozed ? "moon.zzz.fill" : "moon.zzz")
+                    .font(.system(size: 11))
+                    .foregroundStyle(prefs.isSnoozed ? QColors.warning : QColors.textTertiary)
+                Text(L.t(.popoverSnooze))
+                    .font(QFonts.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(QColors.textTertiary)
+                Spacer()
+                if prefs.isSnoozed {
+                    Button {
+                        prefs.snoozeUntil = nil
+                    } label: {
+                        Text(L.t(.popoverSnoozeResume))
+                            .font(QFonts.caption)
+                            .foregroundStyle(QColors.accent)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            if prefs.isSnoozed, let until = prefs.snoozeUntil {
+                Text(snoozeRemainingText(until: until))
+                    .font(QFonts.caption)
+                    .foregroundStyle(QColors.textSecondary)
+            } else {
+                HStack(spacing: 6) {
+                    snoozeChip(L.t(.popoverSnooze30m), minutes: 30)
+                    snoozeChip(L.t(.popoverSnooze1h), minutes: 60)
+                    snoozeChip(L.t(.popoverSnoozeTomorrow), minutes: nil)
+                }
+            }
+        }
+        .padding(.horizontal, QSpacing.l)
+        .padding(.vertical, QSpacing.m)
+    }
+
+    private func snoozeChip(_ title: String, minutes: Int?) -> some View {
+        Button {
+            if let m = minutes {
+                prefs.snoozeUntil = Date().addingTimeInterval(TimeInterval(m * 60))
+            } else {
+                // Until 8am tomorrow.
+                var cal = Calendar.current
+                cal.timeZone = .current
+                let tomorrow = cal.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+                prefs.snoozeUntil = cal.date(bySettingHour: 8, minute: 0, second: 0, of: tomorrow)
+            }
+        } label: {
+            Text(title)
+                .font(QFonts.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(QColors.textSecondary)
+                .padding(.vertical, 5)
+                .padding(.horizontal, 9)
+                .background(Color.white.opacity(0.06))
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func snoozeRemainingText(until: Date) -> String {
+        let df = DateFormatter()
+        df.timeStyle = .short
+        df.dateStyle = .none
+        return L.t(.popoverSnoozedUntil) + " " + df.string(from: until)
     }
 
     private var modeSwitcherSection: some View {
