@@ -396,6 +396,44 @@ enum ModelRegistry {
         all.first { $0.ollamaTag == tag || $0.id == tag }
     }
 
+    /// Synthesize a `ModelEntry` for a user-imported Ollama tag that isn't in
+    /// the curated catalog. Sizes/RAM are unknown so we leave them at 0 and
+    /// guess the family from the tag prefix for nicer coloring.
+    static func makeCustom(tag: String) -> ModelEntry {
+        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lower = trimmed.lowercased()
+        let family: ModelFamily = {
+            if lower.hasPrefix("gemma") { return .gemma }
+            if lower.hasPrefix("qwen")  { return .qwen }
+            if lower.hasPrefix("phi")   { return .phi }
+            if lower.hasPrefix("llama") { return .llama }
+            if lower.hasPrefix("smol")  { return .smollm }
+            return .llama
+        }()
+        return ModelEntry(
+            id: trimmed,
+            displayName: trimmed,
+            family: family,
+            publisher: "Custom",
+            sizeGB: 0,
+            ramGB: 0,
+            speed: .balanced,
+            description: "Custom Ollama model you added. Sizes are unknown until it's pulled.",
+            ollamaTag: trimmed,
+            recommended: false
+        )
+    }
+
+    /// A reasonable validation for an Ollama tag: "name" or "name:tag", no
+    /// spaces, sensible characters.
+    static func isValidCustomTag(_ tag: String) -> Bool {
+        let t = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard t.count >= 2, !t.contains(" ") else { return false }
+        let allowed = CharacterSet(charactersIn:
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._-/")
+        return t.unicodeScalars.allSatisfy { allowed.contains($0) }
+    }
+
     static func entries(family: ModelFamily?) -> [ModelEntry] {
         guard let family else { return all }
         return all.filter { $0.family == family }

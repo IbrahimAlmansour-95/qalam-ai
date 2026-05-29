@@ -8,6 +8,7 @@ struct PrivacySettingsView: View {
     @State private var showClearStyleConfirm = false
     @State private var dataFootprint = ""
     @State private var confirmUninstall: UninstallChoice?
+    @State private var diagnosticsCopied = false
 
     private enum UninstallChoice: Identifiable {
         case keepData, everything
@@ -22,6 +23,7 @@ struct PrivacySettingsView: View {
                 compatibilityCard
                 historyCard
                 usageCard
+                diagnosticsCard
                 uninstallCard
             }
             .padding(QSpacing.xl)
@@ -46,6 +48,33 @@ struct PrivacySettingsView: View {
                 ),
                 secondaryButton: .cancel(Text(L.t(.uninstallCancel)))
             )
+        }
+    }
+
+    private var diagnosticsCard: some View {
+        QCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L.t(.diagnosticsTitle))
+                    .font(QFonts.bodyMed)
+                    .foregroundStyle(QColors.textPrimary)
+                Text(L.t(.diagnosticsHelp))
+                    .font(QFonts.caption)
+                    .foregroundStyle(QColors.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 10) {
+                    QButton(title: diagnosticsCopied ? L.t(.diagnosticsCopied) : L.t(.diagnosticsCopy),
+                            icon: diagnosticsCopied ? "checkmark" : "doc.on.doc",
+                            style: .secondary, size: .small) {
+                        Diagnostics.copyToPasteboard()
+                        diagnosticsCopied = true
+                        Task {
+                            try? await Task.sleep(nanoseconds: 1_800_000_000)
+                            diagnosticsCopied = false
+                        }
+                    }
+                    Spacer()
+                }
+            }
         }
     }
 

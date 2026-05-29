@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 — 2026-05-29
+
+- **Configurable accept key** — accept the next word with Tab ⇥ (default) or the Right Arrow →. ⇧ + the key still accepts the whole suggestion.
+- **Snooze** — pause suggestions for 30 min, 1 hour, or until tomorrow morning, right from the menu-bar popover, with a one-tap Resume.
+- **Inline accept hint** — a faint ⇥ / → badge after the ghost text reminds you which key accepts it (toggle in General settings).
+- **Smarter triggers** — suggestions are suppressed inside URLs, emails, file paths, and code-ish tokens where autocomplete is just noise.
+- **Snippet variables** — `{date}`, `{time}`, `{datetime}`, and `{clipboard}` expand inside snippet text.
+- **Custom model import** — add any Ollama tag (e.g. `llama3.2:3b`) from the Models tab to install and use beyond the curated catalog.
+- **Diagnostics** — copy a privacy-safe snapshot of app + system state from the Privacy tab to help troubleshoot (no typed text included).
+- Full Arabic localization for all of the above.
+
 ## 1.1.3 — 2026-05-29
 
 - Ghost text matches the host field's font, size, and color more reliably (reads the run's attributes with element-level font/color fallbacks) so completions blend into your writing like Cotypist.

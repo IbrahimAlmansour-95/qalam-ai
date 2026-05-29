@@ -239,6 +239,31 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     case popoverCompatibilityWorks
     case popoverCompatibilityToggle
     case popoverCompatibilityLimited
+    // ━━━ Snooze ━━━
+    case popoverSnooze
+    case popoverSnoozeResume
+    case popoverSnooze30m
+    case popoverSnooze1h
+    case popoverSnoozeTomorrow
+    case popoverSnoozedUntil
+    // ━━━ Accept key / hint (General) ━━━
+    case generalAcceptKey
+    case generalAcceptKeyTab
+    case generalAcceptKeyArrow
+    case generalShowAcceptHint
+    case generalShowAcceptHintHelp
+    // ━━━ Custom model import (Models) ━━━
+    case modelsAddCustom
+    case modelsAddCustomTitle
+    case modelsAddCustomHelp
+    case modelsAddCustomPlaceholder
+    case modelsAddCustomButton
+    case modelsCustomBadge
+    // ━━━ Diagnostics (Privacy) ━━━
+    case diagnosticsTitle
+    case diagnosticsHelp
+    case diagnosticsCopy
+    case diagnosticsCopied
 }
 
 enum Translations {
@@ -759,6 +784,40 @@ enum Translations {
             .english: "Limited: VS Code/Cursor main editor uses canvas text — only sidebar chats work.",
             .arabic:  "محدود: محرر VS Code/Cursor الرئيسي يستخدم رسماً مخصصاً — يعمل فقط في الشريط الجانبي."
         ],
+        // ━━━ Snooze ━━━
+        .popoverSnooze: [ .english: "Snooze", .arabic: "إيقاف مؤقت" ],
+        .popoverSnoozeResume: [ .english: "Resume", .arabic: "استئناف" ],
+        .popoverSnooze30m: [ .english: "30 min", .arabic: "٣٠ دقيقة" ],
+        .popoverSnooze1h: [ .english: "1 hour", .arabic: "ساعة" ],
+        .popoverSnoozeTomorrow: [ .english: "Tomorrow", .arabic: "حتى الغد" ],
+        .popoverSnoozedUntil: [ .english: "Paused until", .arabic: "متوقف حتى" ],
+        // ━━━ Accept key / hint ━━━
+        .generalAcceptKey: [ .english: "Accept key", .arabic: "مفتاح القبول" ],
+        .generalAcceptKeyTab: [ .english: "Tab ⇥", .arabic: "Tab ⇥" ],
+        .generalAcceptKeyArrow: [ .english: "Right Arrow →", .arabic: "السهم الأيمن →" ],
+        .generalShowAcceptHint: [ .english: "Show accept hint", .arabic: "إظهار تلميح القبول" ],
+        .generalShowAcceptHintHelp: [
+            .english: "Display a faint key badge after the suggestion so you remember which key accepts it.",
+            .arabic:  "إظهار شارة خافتة للمفتاح بعد الاقتراح لتذكّر المفتاح الذي يقبله."
+        ],
+        // ━━━ Custom model import ━━━
+        .modelsAddCustom: [ .english: "Add a custom model", .arabic: "إضافة نموذج مخصص" ],
+        .modelsAddCustomTitle: [ .english: "Custom Ollama model", .arabic: "نموذج Ollama مخصص" ],
+        .modelsAddCustomHelp: [
+            .english: "Enter any Ollama tag (e.g. \"llama3.2:3b\"). It will appear in your model list to install and use.",
+            .arabic:  "أدخل أي وسم Ollama (مثل \"llama3.2:3b\"). سيظهر في قائمة النماذج لتثبيته واستخدامه."
+        ],
+        .modelsAddCustomPlaceholder: [ .english: "model:tag", .arabic: "model:tag" ],
+        .modelsAddCustomButton: [ .english: "Add", .arabic: "إضافة" ],
+        .modelsCustomBadge: [ .english: "Custom", .arabic: "مخصص" ],
+        // ━━━ Diagnostics ━━━
+        .diagnosticsTitle: [ .english: "Diagnostics", .arabic: "التشخيص" ],
+        .diagnosticsHelp: [
+            .english: "A snapshot of app state to help troubleshoot. No text you've typed is included.",
+            .arabic:  "لقطة لحالة التطبيق للمساعدة في حل المشكلات. لا تتضمن أي نص كتبته."
+        ],
+        .diagnosticsCopy: [ .english: "Copy diagnostics", .arabic: "نسخ التشخيص" ],
+        .diagnosticsCopied: [ .english: "Copied", .arabic: "تم النسخ" ],
     ]
 }
 

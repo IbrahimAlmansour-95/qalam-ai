@@ -51,6 +51,11 @@ final class GhostTextOverlayWindow {
         viewModel.text = text
         viewModel.hint = hint
         viewModel.isRTL = isRTL
+        // Show the ⇥/→ accept hint only for multi-char completions, when the
+        // user has opted in. The glyph matches the configured accept key.
+        viewModel.showHint = UserPreferences.shared.showAcceptHint
+            && hint == .completion && text.count >= 2
+        viewModel.hintGlyph = UserPreferences.shared.acceptWordKey == "rightArrow" ? "→" : "⇥"
         // The overlay panel occupies the EXACT caret line-box: its height is
         // the caret rect's height and its bottom sits on the caret's bottom.
         // The text inside fills that height and centers vertically, so its
@@ -105,6 +110,9 @@ final class GhostTextViewModel: ObservableObject {
     /// The host line-box height; when > 0 the text is vertically centered in
     /// it so the baseline matches the surrounding text.
     @Published var lineHeight: CGFloat = 0
+    /// Show a faint key hint (e.g. ⇥) after the ghost text.
+    @Published var showHint: Bool = false
+    @Published var hintGlyph: String = "⇥"
 }
 
 struct GhostTextView: View {
@@ -115,14 +123,27 @@ struct GhostTextView: View {
         // opacity) so the suggestion blends into the line like macOS's native
         // QuickType, instead of a fixed overlay font that reads as separate.
         // Vertically centered inside the caret line-box → shared baseline.
-        Text(model.text)
-            .font(hostFont)
-            .foregroundStyle(foreground)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: true)
-            .frame(maxWidth: .infinity, maxHeight: .infinity,
-                   alignment: model.isRTL ? .trailing : .leading)
-            .environment(\.layoutDirection, model.isRTL ? .rightToLeft : .leftToRight)
+        HStack(spacing: 4) {
+            Text(model.text)
+                .font(hostFont)
+                .foregroundStyle(foreground)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: true)
+            if model.showHint {
+                Text(model.hintGlyph)
+                    .font(.system(size: max(9, model.style.pointSize * 0.7), weight: .medium))
+                    .foregroundStyle(Color.secondary.opacity(0.55))
+                    .padding(.horizontal, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.secondary.opacity(0.12))
+                    )
+                    .fixedSize()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity,
+               alignment: model.isRTL ? .trailing : .leading)
+        .environment(\.layoutDirection, model.isRTL ? .rightToLeft : .leftToRight)
     }
 
     private var hostFont: Font {
