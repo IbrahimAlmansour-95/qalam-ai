@@ -44,7 +44,8 @@ final class GhostTextOverlayWindow {
                 style: AccessibilityMonitor.CaretStyle,
                 caret: CGRect,
                 isRTL: Bool,
-                placeLeft: Bool? = nil) {
+                placeLeft: Bool? = nil,
+                fieldFrame: CGRect? = nil) {
         if text.isEmpty {
             hide()
             return
@@ -124,7 +125,18 @@ final class GhostTextOverlayWindow {
         // ghost in the empty space the cursor is advancing into on mixed
         // LTR/RTL lines, instead of over existing text.
         let extendLeft = placeLeft ?? isRTL
-        let x = extendLeft ? (caret.minX - gap - width) : (caret.maxX + gap)
+        var x = extendLeft ? (caret.minX - gap - width) : (caret.maxX + gap)
+        // Safety clamp: keep the ghost within the text field's horizontal
+        // bounds. Some apps misreport the caret (e.g. Telegram pins the RTL
+        // caret to the box's left edge), which otherwise flings the ghost off
+        // the field entirely. No-op for the common case where it's already
+        // inside. Only clamp when the field is wide enough to hold the ghost.
+        if let f = fieldFrame, f.width >= width {
+            x = Swift.max(f.minX, Swift.min(x, f.maxX - width))
+        } else if let f = fieldFrame {
+            // Ghost wider than the field — pin to the field's leading edge.
+            x = f.minX
+        }
         panel.setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
         // Show instantly — a fade reads as a popover/hover. Inline text just
         // appears.
