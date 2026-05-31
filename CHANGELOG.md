@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.9 — 2026-05-31
+
+- **Ghost can no longer fly off the text field.** Some apps misreport the caret — e.g. Telegram pins the Arabic (RTL) caret to the box's left edge — which threw the suggestion far outside the field. The ghost is now clamped to stay within the focused field's bounds. (No effect on apps that report the caret correctly.)
+- Made the field-frame coordinate conversion consistent with the caret (correct on multi-monitor setups).
+
 ## 1.3.8 — 2026-05-31
 
 - **Inline ghost works in more apps.** Fixed positioning in Terminal and Chromium/Electron apps (Claude Desktop, etc.), which report a garbage zero-length caret rect — we now validate the caret X and fall back to the real glyph edge, so the ghost lands at the cursor instead of flying to the screen corner.
