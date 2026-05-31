@@ -183,6 +183,17 @@ final class SuggestionEngine {
             return
         }
 
+        // Keep the visible ghost in sync with typing IMMEDIATELY (before the
+        // debounced model call), so a stale suggestion never lingers or follows
+        // the caret. If the user typed the next character(s) of the current
+        // suggestion, trim them so the ghost shrinks seamlessly; if they typed
+        // something else (or finished), clear it at once.
+        if let current = currentSuggestion, case .llm = current.kind {
+            currentSuggestion = Self.advance(current,
+                                             from: lastContext.textBeforeCursor,
+                                             to: context.textBeforeCursor)
+        }
+
         lastContext = context
         cycleCount = 0   // fresh context — reset the alternative cycle
 
@@ -225,15 +236,18 @@ final class SuggestionEngine {
         let text = context.textBeforeCursor
         let cursor = text.count
 
-        // Fast path: NSSpellChecker (typos + obvious grammar).
+        // Fast path: NSSpellChecker (typos + obvious grammar). Effective for
+        // English/Latin; macOS's Arabic dictionary is too lenient to catch much.
         if let local = await GrammarChecker.shared.checkAtCursor(text: text, cursorOffset: cursor) {
             return buildCorrection(from: local, in: text, cursor: cursor)
         }
 
-        // Slower path: LLM sentence-level grammar fix. Only triggers right after
-        // the user has finished a sentence (so we have something complete to
-        // proof-read) and only when the user has explicitly opted in.
-        if UserPreferences.shared.autoGrammarEnabled,
+        // LLM sentence-level proof-pass (fires only at a finished sentence).
+        // Runs automatically for ARABIC — the local LLM is the only thing that
+        // can correct Arabic, since NSSpellChecker effectively can't — and for
+        // any language when the user opts into grammar checking.
+        let arabic = Self.isArabicDominant(text)
+        if (arabic || UserPreferences.shared.autoGrammarEnabled),
            let issue = await llmGrammarCheck(text: text) {
             return buildCorrection(from: issue, in: text, cursor: cursor)
         }
@@ -270,12 +284,21 @@ final class SuggestionEngine {
     /// Fires only when the user just typed a sentence terminator followed by
     /// a space. Asks the model to rewrite the just-finished sentence and only
     /// surfaces a fix if the rewrite is materially different.
+    /// Sentence terminators, including Arabic question mark (؟) and full stop (۔).
+    private static let sentenceTerminators: Set<Character> = [".", "?", "!", "؟", "۔"]
+
+    /// True when the recent text is predominantly Arabic script.
+    static func isArabicDominant(_ text: String) -> Bool {
+        Script.dominant(in: text.suffix(80)) == .arabic
+    }
+
     private func llmGrammarCheck(text: String) async -> GrammarIssue? {
-        // Require the user to have just landed on a post-sentence space.
+        // Require the user to have just landed on a post-sentence space
+        // (terminator + space) — works for English (.?!) and Arabic (؟ ۔).
         let trimmed = text
         guard let lastTwo = trimmed.suffix(2).first,
               trimmed.hasSuffix(" "),
-              ".?!".contains(lastTwo) else { return nil }
+              Self.sentenceTerminators.contains(lastTwo) else { return nil }
 
         // Take the most recent finished sentence (everything from the second-to-
         // last terminator + 1 through the last terminator inclusive).
@@ -283,7 +306,7 @@ final class SuggestionEngine {
         let head = String(withoutTrailingSpace) // ends in terminator
         var sentenceStart = head.startIndex
         let body = head.dropLast()               // up to (but not including) terminator
-        if let prevTerm = body.lastIndex(where: { ".?!\n".contains($0) }) {
+        if let prevTerm = body.lastIndex(where: { Self.sentenceTerminators.contains($0) || $0 == "\n" }) {
             sentenceStart = head.index(after: prevTerm)
         }
         let sentence = String(head[sentenceStart...]).trimmingCharacters(in: .whitespaces)
@@ -548,6 +571,25 @@ final class SuggestionEngine {
             }
             await self?.markStreamFinished()
         }
+    }
+
+    /// Reconcile the current ghost with new typing. Returns the (possibly
+    /// trimmed) suggestion to keep showing, or nil to clear it.
+    ///   • typed the next chars of the suggestion → trim them (ghost shrinks)
+    ///   • typed something else, deleted, or finished → nil (clear)
+    static func advance(_ s: SuggestionResult, from old: String, to new: String) -> SuggestionResult? {
+        guard new.hasPrefix(old) else { return nil }            // deletion / jump → clear
+        let typed = String(new.dropFirst(old.count))
+        if typed.isEmpty { return s }                            // caret/selection change only → keep
+        guard s.text.hasPrefix(typed) else { return nil }        // diverged → clear
+        let remaining = String(s.text.dropFirst(typed.count))
+        guard !remaining.isEmpty else { return nil }             // fully typed out → clear
+        return SuggestionResult(
+            text: remaining,
+            words: remaining.split(separator: " ").map(String.init),
+            basedOnContext: new,
+            kind: s.kind
+        )
     }
 
     private func publish(_ result: SuggestionResult) {

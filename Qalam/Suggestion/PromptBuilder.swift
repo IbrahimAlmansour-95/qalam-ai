@@ -33,6 +33,22 @@ enum PromptBuilder {
         likely type next — in the same language, casing, and tone. Do not repeat \
         what is already written, and do not add quotes, labels, or explanations.
         """
+        // Steer the language to the script the user is CURRENTLY typing, not the
+        // dominant language of the surrounding text. Without this, after writing
+        // a paragraph of Arabic and switching to English, the model keeps
+        // completing in Arabic (and vice-versa). A small model only obeys this
+        // when the directive is forceful AND the final "Continuation" label is
+        // tagged with the language (which primes the first token) — see below.
+        // Steer by the CURRENT word (trailing token), so a short English word
+        // after Arabic still flips the language.
+        let lastToken = textBeforeCursor
+            .split(whereSeparator: { $0 == " " || $0 == "\n" || $0 == "\t" }).last
+        let script = lastToken.map { Script.dominant(in: $0) } ?? .unknown
+        switch script {
+        case .arabic:  prompt += "\nThe last word is Arabic, so reply in Arabic only — no English."
+        case .latin:   prompt += "\nThe last word is English, so reply in English only — no Arabic."
+        case .unknown: break
+        }
 
         // Cheap, high-signal hints only.
         var hints: [String] = []
@@ -70,7 +86,14 @@ enum PromptBuilder {
             prompt += "\n\nYour continuation must fit before this following text: \(String(after.prefix(80)))"
         }
 
-        prompt += "\n\nText:\n\(tail)\n\nContinuation:"
+        // Language-tagged label primes the model to begin in the right script.
+        let contLabel: String
+        switch script {
+        case .arabic:  contLabel = "Continuation (Arabic):"
+        case .latin:   contLabel = "Continuation (English):"
+        case .unknown: contLabel = "Continuation:"
+        }
+        prompt += "\n\nText:\n\(tail)\n\n\(contLabel)"
         return prompt
     }
 

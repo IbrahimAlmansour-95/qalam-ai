@@ -144,7 +144,22 @@ final class AccessibilityMonitor {
     /// (e.g. the message thread above a reply box). Walks up to the focused
     /// element's parent and collects sibling/descendant `AXValue`/`AXTitle`
     /// static text. Bounded and best-effort — returns "" if nothing useful.
+    private var cachedSurrounding: (text: String, at: Date)?
+
     func surroundingText(maxChars: Int = 600) -> String {
+        // Cache the result: the recursive AX tree walk below is expensive in
+        // heavy WebKit editors (Apple Notes), and running it on every debounced
+        // keystroke was the main source of per-keystroke lag. Surrounding
+        // context changes slowly, so refreshing at most every ~1.5s is plenty.
+        if let cached = cachedSurrounding, Date().timeIntervalSince(cached.at) < 1.5 {
+            return cached.text
+        }
+        let result = computeSurroundingText(maxChars: maxChars)
+        cachedSurrounding = (result, Date())
+        return result
+    }
+
+    private func computeSurroundingText(maxChars: Int = 600) -> String {
         let systemWide = AXUIElementCreateSystemWide()
         var focused: AnyObject?
         guard AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
@@ -219,39 +234,78 @@ final class AccessibilityMonitor {
         else { return nil }
         let element = elementUnwrapped as! AXUIElement
 
-        var rangeRef: AnyObject?
-        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeRef) == .success,
-              let rangeValue = rangeRef
-        else { return nil }
-        let axRange = rangeValue as! AXValue
-
-        var range = CFRange(location: 0, length: 0)
-        guard AXValueGetValue(axRange, .cfRange, &range) else { return nil }
-
         // The element's own AX frame (top-left origin) — we validate the
         // caret rect against it so we never anchor on the wrong line or a
         // bogus (0,0) rect.
         let elementRect = rawElementRect(element)
 
-        // Probe order, taking the first plausible rect:
-        //   1. exact caret (length 0) — most apps return a zero-width vertical
-        //      rect right at the cursor; the most accurate anchor.
-        //   2. the character BEFORE the cursor (length 1) — the just-typed glyph.
-        //   3. the character AFTER the cursor (length 1).
-        let candidates: [CFRange] = [
-            CFRange(location: range.location, length: 0),
-            range.location > 0 ? CFRange(location: range.location - 1, length: 1) : nil,
-            CFRange(location: range.location, length: 1),
-        ].compactMap { $0 }
-
         var rect: CGRect?
-        for probe in candidates {
-            guard let r = boundsForRange(probe, in: element) else { continue }
-            if isPlausibleCaretRect(r, within: elementRect) {
-                rect = r
-                break
+
+        // PRIMARY for WebKit-based editors (Apple Notes, Mail compose, web text
+        // fields): the TextMarker API. These apps implement the AXTextMarker
+        // attributes accurately but return STALE/wrong rects from the CFRange
+        // `AXBoundsForRange` path — which is why the ghost landed on the wrong
+        // line in Notes. Try markers first; fall back to CFRange for apps like
+        // TextEdit that don't expose markers.
+        if let r = caretRectViaTextMarker(element),
+           isPlausibleCaretRect(r, within: elementRect) {
+            rect = r
+        }
+
+        if rect == nil {
+            var rangeRef: AnyObject?
+            if AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeRef) == .success,
+               let rangeValue = rangeRef {
+                let axRange = rangeValue as! AXValue
+                var range = CFRange(location: 0, length: 0)
+                if AXValueGetValue(axRange, .cfRange, &range) {
+                    // CRITICAL: in NSTextView-backed AXTextAreas (Apple Notes,
+                    // Dia, many native editors) the ZERO-LENGTH caret bounds
+                    // report a broken Y (stuck on the wrong line), but a
+                    // NON-ZERO 1-char range reports the correct line.
+                    //
+                    // So combine the two: take the horizontal position (X) from
+                    // the ZERO-LENGTH caret (it tracks the cursor accurately,
+                    // LTR and RTL alike — only its Y is wrong), and take the
+                    // line Y + height from a 1-char range. This is exact and
+                    // direction-agnostic, so it fixes both the LTR overlap and
+                    // the RTL "far away" placement without guessing edges.
+                    let zeroCaret = boundsForRange(CFRange(location: range.location, length: 0), in: element)
+                    let beforeChar = range.location > 0
+                        ? boundsForRange(CFRange(location: range.location - 1, length: 1), in: element) : nil
+                    let afterChar = boundsForRange(CFRange(location: range.location, length: 1), in: element)
+                    let lineRect = [beforeChar, afterChar]
+                        .compactMap { $0 }
+                        .first { isPlausibleCaretRect($0, within: elementRect) }
+
+                    // The zero-length caret's X is only trustworthy if it falls
+                    // inside the field. Some apps (Terminal, Chromium) return a
+                    // garbage caret rect like (0,1080,0,0) — using its x=0 threw
+                    // the ghost to the far-left of the screen. Validate it; if
+                    // it's bogus, use the trailing edge of the char before the
+                    // cursor (a real rendered glyph = the true cursor X).
+                    let zeroXUsable: Bool = {
+                        guard let z = zeroCaret, z.minX.isFinite, z.minY.isFinite else { return false }
+                        if let e = elementRect, e.width > 0 {
+                            return z.minX >= e.minX - 4 && z.minX <= e.maxX + 4
+                        }
+                        return z.minX != 0 || z.minY != 0
+                    }()
+
+                    if zeroXUsable, let z = zeroCaret, let ls = lineRect {
+                        // True cursor X (validated) + correct line Y.
+                        rect = CGRect(x: z.minX, y: ls.minY, width: 0, height: ls.height)
+                    } else if let ls = lineRect {
+                        // Garbage/no caret X — the char-before's trailing edge IS
+                        // the cursor. (Correct line Y comes with it.)
+                        rect = CGRect(x: ls.maxX, y: ls.minY, width: 0, height: ls.height)
+                    } else if let z = zeroCaret, isPlausibleCaretRect(z, within: elementRect) {
+                        rect = z
+                    }
+                }
             }
         }
+
         guard let caret = rect else { return nil }
 
         // AX/Quartz global coordinates use a TOP-LEFT origin (y grows down from
@@ -418,6 +472,36 @@ final class AccessibilityMonitor {
         let axBounds = boundsValue as! AXValue
         var rect = CGRect.zero
         guard AXValueGetValue(axBounds, .cgRect, &rect) else { return nil }
+        return rect
+    }
+
+    /// Caret rect via the AXTextMarker API (top-left origin), used by WebKit
+    /// editors (Apple Notes, Mail, web inputs). They expose
+    /// `AXSelectedTextMarkerRange` + `AXBoundsForTextMarkerRange` accurately,
+    /// while their CFRange `AXBoundsForRange` is stale/wrong (wrong line).
+    /// Returns nil for apps that don't implement text markers (e.g. TextEdit),
+    /// so the caller falls back to the CFRange path.
+    private func caretRectViaTextMarker(_ element: AXUIElement) -> CGRect? {
+        var markerRangeRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(
+                element,
+                "AXSelectedTextMarkerRange" as CFString,
+                &markerRangeRef) == .success,
+              let markerRange = markerRangeRef
+        else { return nil }
+
+        var boundsRef: AnyObject?
+        guard AXUIElementCopyParameterizedAttributeValue(
+                element,
+                "AXBoundsForTextMarkerRange" as CFString,
+                markerRange as CFTypeRef,
+                &boundsRef) == .success,
+              let boundsValue = boundsRef,
+              CFGetTypeID(boundsValue as CFTypeRef) == AXValueGetTypeID()
+        else { return nil }
+
+        var rect = CGRect.zero
+        guard AXValueGetValue(boundsValue as! AXValue, .cgRect, &rect) else { return nil }
         return rect
     }
 

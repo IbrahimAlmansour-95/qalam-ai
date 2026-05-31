@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.8 — 2026-05-31
+
+- **Inline ghost works in more apps.** Fixed positioning in Terminal and Chromium/Electron apps (Claude Desktop, etc.), which report a garbage zero-length caret rect — we now validate the caret X and fall back to the real glyph edge, so the ghost lands at the cursor instead of flying to the screen corner.
+- **Mixed Arabic/English lines** place the ghost on the side the line is actually flowing (base direction), so it no longer overlaps existing text.
+- **Arabic autocorrect** now works: since macOS's Arabic dictionary can't catch errors, finished Arabic sentences are proof-read by the local model (e.g. `انا ذهبت الي المدرسه` → `أنا ذهبت إلى المدرسة`). English keeps using the instant system spell-checker.
+- **Context-aware suggestions**: clipboard, nearby on-screen text, and screen OCR now feed the model (all cached so typing stays fast).
+- Lingering ghost no longer sticks after you finish a word; suggestions stay snappy (engine kept warm, no orphaned processes).
+- Internal: unified script detection into one shared helper.
+
 ## 1.3.7 — 2026-05-31
 
 - **Fixed slow suggestions.** The bundled Ollama engine wasn't shut down on quit, so it (and its model-loaded runners) were orphaned on every launch and piled up, thrashing memory. The engine is now stopped on quit, its runner children are reaped, and any orphans from a prior crash are cleared on launch. Warm completions are ~0.3s again.
