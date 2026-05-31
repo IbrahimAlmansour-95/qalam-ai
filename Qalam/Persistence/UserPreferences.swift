@@ -207,6 +207,31 @@ final class UserPreferences {
             self.firstLaunchDate = now
             defaults.set(now.timeIntervalSince1970, forKey: Keys.firstLaunchDate)
         }
+
+        // One-time migration: turn on the context sources so suggestions are
+        // context-aware (clipboard + nearby on-screen text need no permission;
+        // screen OCR will prompt for Screen Recording the first time it runs).
+        // Guarded by a flag so we never override the user's later choices.
+        if !defaults.bool(forKey: Keys.contextMigrationV1) {
+            self.clipboardContextEnabled = true
+            self.broaderContextEnabled = true
+            self.screenContextEnabled = true
+            defaults.set(true, forKey: Keys.contextMigrationV1)
+        }
+
+        // One-time cleanup: the previous build auto-excluded terminal apps;
+        // the user wants autocomplete everywhere, so remove those defaults
+        // (leaving any the user added themselves untouched isn't possible to
+        // distinguish, but the prior list was empty for affected users).
+        if !defaults.bool(forKey: Keys.terminalExclusionRevertV1) {
+            let terminals: Set<String> = [
+                "com.apple.Terminal", "com.googlecode.iterm2", "dev.warp.Warp-Stable",
+                "io.alacritty", "net.kovidgoyal.kitty", "com.github.wez.wezterm",
+                "co.zeit.hyper", "org.tabby",
+            ]
+            self.excludedBundleIDs = self.excludedBundleIDs.filter { !terminals.contains($0) }
+            defaults.set(true, forKey: Keys.terminalExclusionRevertV1)
+        }
     }
 
     private enum Keys {
@@ -236,5 +261,7 @@ final class UserPreferences {
         static let appearance              = "qalam.appearance"
         static let ghostSizeScale          = "qalam.ghostSizeScale"
         static let ghostVerticalOffset     = "qalam.ghostVerticalOffset"
+        static let contextMigrationV1      = "qalam.contextMigrationV1"
+        static let terminalExclusionRevertV1 = "qalam.terminalExclusionRevertV1"
     }
 }

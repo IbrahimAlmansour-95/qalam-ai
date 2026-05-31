@@ -23,15 +23,8 @@ actor GrammarChecker {
     }()
 
     /// Picks the NSSpellChecker language code for a word based on its script.
-    /// Arabic Unicode block is U+0600–U+06FF (plus presentation forms).
     private func language(for text: String) -> String {
-        let isArabic = text.unicodeScalars.contains { scalar in
-            (0x0600...0x06FF).contains(scalar.value) ||
-            (0x0750...0x077F).contains(scalar.value) ||   // Arabic Supplement
-            (0xFB50...0xFDFF).contains(scalar.value) ||   // Presentation Forms-A
-            (0xFE70...0xFEFF).contains(scalar.value)      // Presentation Forms-B
-        }
-        return isArabic ? "ar" : "en"
+        Script.containsArabic(in: text) ? "ar" : "en"
     }
 
     /// Runs an asynchronous spelling+grammar pass over `text`. Returns the

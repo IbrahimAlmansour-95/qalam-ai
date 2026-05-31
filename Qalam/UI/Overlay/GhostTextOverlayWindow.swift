@@ -43,7 +43,8 @@ final class GhostTextOverlayWindow {
                 hint: GhostStyleHint = .completion,
                 style: AccessibilityMonitor.CaretStyle,
                 caret: CGRect,
-                isRTL: Bool) {
+                isRTL: Bool,
+                placeLeft: Bool? = nil) {
         if text.isEmpty {
             hide()
             return
@@ -114,7 +115,16 @@ final class GhostTextOverlayWindow {
         // Bottom-left origin: panel bottom == caret bottom, minus the user's
         // vertical nudge (positive nudge moves the ghost down = lower cocoa y).
         let y = caret.minY - vNudge
-        let x = isRTL ? (caret.minX - 1 - width) : (caret.maxX + 1)
+        // Small gap after the cursor so the ghost doesn't visually collide with
+        // the character you're typing (scales with text size). LTR extends
+        // right of the caret; RTL extends left of it.
+        let gap = max(6, style.pointSize * 0.55)
+        // Which side to place the box: the line's base direction (placeLeft) if
+        // provided, else fall back to the text's own direction. This keeps the
+        // ghost in the empty space the cursor is advancing into on mixed
+        // LTR/RTL lines, instead of over existing text.
+        let extendLeft = placeLeft ?? isRTL
+        let x = extendLeft ? (caret.minX - gap - width) : (caret.maxX + gap)
         panel.setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
         // Show instantly — a fade reads as a popover/hover. Inline text just
         // appears.

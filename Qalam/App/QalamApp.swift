@@ -113,9 +113,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     } else if let caret = AccessibilityMonitor.shared.caretFrame() {
                         let hint = AppDelegate.hint(for: suggestion)
                         let style = AccessibilityMonitor.shared.caretStyle()
-                        let rtl = AppDelegate.isRTLText(text)
+                        // Two directions: how the suggestion TEXT reads (its own
+                        // script) vs which SIDE to place the box. The box follows
+                        // the line's BASE direction (its first strong character),
+                        // so on an English-started line an Arabic suggestion
+                        // extends right into the empty space after the cursor —
+                        // not left over the English already there.
+                        let textRTL = AppDelegate.isRTLText(text)
+                        let placeLeft = AppDelegate.baseDirectionRTL(suggestion?.basedOnContext ?? "")
                         GhostTextOverlayWindow.shared.update(
-                            text: text, hint: hint, style: style, caret: caret, isRTL: rtl)
+                            text: text, hint: hint, style: style, caret: caret,
+                            isRTL: textRTL, placeLeft: placeLeft)
                     } else {
                         // No trustworthy caret (e.g. Electron canvas editors) —
                         // hide rather than draw at a wrong location.
@@ -127,20 +135,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// True when the suggestion text is predominantly Arabic (RTL). Drives
-    /// both the overlay's placement (left of caret) and its layout direction.
+    /// True when the suggestion text is predominantly Arabic (RTL) — drives the
+    /// suggestion text's layout direction.
     private static func isRTLText(_ text: String) -> Bool {
-        var rtl = 0, ltr = 0
-        for scalar in text.unicodeScalars {
-            let v = scalar.value
-            if (0x0600...0x06FF).contains(v) || (0x0750...0x077F).contains(v) ||
-               (0xFB50...0xFDFF).contains(v) || (0xFE70...0xFEFF).contains(v) {
-                rtl += 1
-            } else if (0x0041...0x005A).contains(v) || (0x0061...0x007A).contains(v) {
-                ltr += 1
-            }
-        }
-        return rtl > ltr
+        Script.dominant(in: text) == .arabic
+    }
+
+    /// Base (paragraph) direction of the cursor's line, from its FIRST strong
+    /// directional character — this is what determines where the cursor visually
+    /// advances. Used to choose which side to place the ghost so it goes into
+    /// empty space, not over existing text, on mixed LTR/RTL lines.
+    private static func baseDirectionRTL(_ context: String) -> Bool {
+        let line = context.split(whereSeparator: { $0.isNewline }).last.map(String.init) ?? context
+        return Script.firstStrong(in: line) == .arabic
     }
 
     private static func hint(for suggestion: SuggestionResult?) -> GhostStyleHint {
