@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1 — 2026-05-31
+
+- **Fixed a crash on launch.** A duplicated block of localization strings made the translation table trap the moment any text was loaded, so the app quit immediately. Removed the duplicate. (Affected 1.2.0 and 1.3.0.)
+
 ## 1.3.0 — 2026-05-29
 
 - **Light mode** — new Appearance setting (System / Light / Dark) in General. The whole UI uses adaptive colors and follows your choice instantly.
