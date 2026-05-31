@@ -121,10 +121,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         // not left over the English already there.
                         let textRTL = AppDelegate.isRTLText(text)
                         let placeLeft = AppDelegate.baseDirectionRTL(suggestion?.basedOnContext ?? "")
-                        let fieldFrame = AccessibilityMonitor.shared.focusedFrame()
                         GhostTextOverlayWindow.shared.update(
                             text: text, hint: hint, style: style, caret: caret,
-                            isRTL: textRTL, placeLeft: placeLeft, fieldFrame: fieldFrame)
+                            isRTL: textRTL, placeLeft: placeLeft)
                     } else {
                         // No trustworthy caret (e.g. Electron canvas editors) —
                         // hide rather than draw at a wrong location.
