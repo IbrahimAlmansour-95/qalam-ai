@@ -530,11 +530,12 @@ final class AccessibilityMonitor {
               AXValueGetValue(axSize, .cgSize, &size)
         else { return nil }
 
-        // AX uses top-left origin on the main screen. Convert to AppKit bottom-left.
-        guard let screen = NSScreen.screens.first(where: { NSPointInRect(NSPoint(x: origin.x, y: origin.y), $0.frame) }) ?? NSScreen.main else {
-            return CGRect(origin: origin, size: size)
-        }
-        let flippedY = screen.frame.maxY - origin.y - size.height
+        guard size.width > 0, size.height > 0 else { return nil }
+        // Same global top-left→bottom-left flip as caretFrame() (primary-screen
+        // height), so the field frame and the caret share one coordinate space.
+        let primaryHeight = (NSScreen.screens.first { $0.frame.origin == .zero }
+                             ?? NSScreen.main)?.frame.height ?? (origin.y + size.height)
+        let flippedY = primaryHeight - origin.y - size.height
         return CGRect(x: origin.x, y: flippedY, width: size.width, height: size.height)
     }
 }
