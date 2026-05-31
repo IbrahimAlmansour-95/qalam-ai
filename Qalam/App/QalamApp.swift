@@ -62,12 +62,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // First-run onboarding.
         if !UserPreferences.shared.hasCompletedOnboarding {
             AppState.shared.showOnboarding()
+        } else if !AccessibilityMonitor.shared.checkPermission() {
+            // Returning user, but Accessibility isn't trusted — almost always
+            // because an app update changed the (ad-hoc) code signature and
+            // macOS dropped the grant. Trigger the system prompt so QalamAI
+            // reappears in the Accessibility list and the user can re-enable it
+            // with one toggle, instead of having to hunt for the menu button.
+            _ = AccessibilityMonitor.shared.checkPermission(prompt: true)
+            AppState.shared.showSettings()
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         KeystrokeInterceptor.shared.uninstall()
         GhostTextOverlayWindow.shared.hide()
+        // Stop the bundled Ollama engine we launched, otherwise it (and its
+        // model-loaded runner children) are orphaned on every quit — they pile
+        // up across launches and thrash memory, making suggestions crawl.
+        // Synchronous + path-scoped so it runs during termination and never
+        // touches a system Ollama.
+        OllamaService.killBundledEngine()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

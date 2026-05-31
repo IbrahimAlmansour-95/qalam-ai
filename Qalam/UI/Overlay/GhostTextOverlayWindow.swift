@@ -62,20 +62,58 @@ final class GhostTextOverlayWindow {
         // baseline lands on the host line's baseline — reading as inline text
         // rather than a floating tooltip. We also scale the ghost font to the
         // line height when the host font size is unknown.
-        let lineHeight = (caret.height >= 8 && caret.height < 120) ? caret.height : 0
+        let lineHeight = (caret.height >= 8 && caret.height < 200) ? caret.height : 0
         var style = style
-        if style.fontName == nil, lineHeight > 0 {
-            // Typical line height ≈ pointSize × 1.3; recover an approx size.
-            style.pointSize = max(11, min(28, lineHeight / 1.3))
+        if lineHeight > 0 {
+            // Size the ghost from the ACTUAL caret line box, not the AX-reported
+            // font size. The two disagree whenever the text is rendered at a
+            // different scale than its logical point size — large-font
+            // documents, zoomed/presentation views, HiDPI quirks — and that
+            // mismatch is what makes the ghost look like a tiny floating tag
+            // instead of inline text. Line height ≈ point size × 1.3.
+            let derived = lineHeight / 1.3
+            // Trust the derived size when it diverges meaningfully from the
+            // reported one (or when no font was detected); otherwise keep the
+            // reported size which is already correct for normal text.
+            if style.fontName == nil || abs(derived - style.pointSize) > 4 {
+                style.pointSize = max(9, min(120, derived))
+            }
+        }
+        // User calibration for apps that misreport caret geometry (e.g. Notes):
+        // a size multiplier and a vertical nudge. Defaults (1.0, 0) are no-ops.
+        let prefs = UserPreferences.shared
+        let sizeScale = prefs.ghostSizeScale
+        let vNudge = prefs.ghostVerticalOffset   // points; positive = move DOWN
+        if sizeScale != 1.0 {
+            style.pointSize = max(6, min(160, style.pointSize * sizeScale))
         }
         viewModel.style = style
         viewModel.lineHeight = lineHeight
 
-        let size = hostingController.view.fittingSize
-        let width = max(20, min(620, ceil(size.width) + 2))
-        let height = lineHeight > 0 ? lineHeight : max(16, ceil(size.height))
-        // Bottom-left origin: panel bottom == caret bottom.
-        let y = caret.minY
+        // Measure the ghost width DIRECTLY from the font. We can't use the
+        // SwiftUI hosting view's fittingSize because the content uses
+        // .frame(maxWidth: .infinity) for vertical centering, which collapses
+        // the reported width to its minimum (~18px) and clipped long
+        // suggestions to a sliver at the caret. NSAttributedString sizing is
+        // exact and independent of layout.
+        let measureFont: NSFont = {
+            if let name = style.fontName, let f = NSFont(name: name, size: style.pointSize) {
+                return f
+            }
+            return NSFont.systemFont(ofSize: style.pointSize)
+        }()
+        var measured = (text as NSString).size(withAttributes: [.font: measureFont]).width
+        if viewModel.showHint {
+            // Room for the "⇥" badge + spacing.
+            measured += style.pointSize * 0.9 + 12
+        }
+        let width = max(8, min(900, ceil(measured) + 6))
+        // Grow the panel to fit the (possibly scaled) text so it isn't clipped.
+        let textLineHeight = ceil(measureFont.ascender - measureFont.descender + measureFont.leading)
+        let height = max(lineHeight > 0 ? lineHeight : 16, textLineHeight)
+        // Bottom-left origin: panel bottom == caret bottom, minus the user's
+        // vertical nudge (positive nudge moves the ghost down = lower cocoa y).
+        let y = caret.minY - vNudge
         let x = isRTL ? (caret.minX - 1 - width) : (caret.maxX + 1)
         panel.setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
         // Show instantly — a fade reads as a popover/hover. Inline text just
@@ -141,8 +179,11 @@ struct GhostTextView: View {
                     .fixedSize()
             }
         }
+        // Bottom-align (not center) so the ghost sits on the host text's
+        // BASELINE — host glyphs rest near the bottom of the caret line-box, so
+        // centering left the ghost a few px high ("near cursor but off").
         .frame(maxWidth: .infinity, maxHeight: .infinity,
-               alignment: model.isRTL ? .trailing : .leading)
+               alignment: model.isRTL ? .bottomTrailing : .bottomLeading)
         .environment(\.layoutDirection, model.isRTL ? .rightToLeft : .leftToRight)
     }
 
@@ -154,28 +195,18 @@ struct GhostTextView: View {
         return .system(size: size, weight: .regular)
     }
 
-    /// Use the host text color for completions (the most "inline" look), the
-    /// accent for snippet/emoji, success-green for corrections — all dimmed so
-    /// the ghost is clearly provisional.
+    /// EVERY ghost — completion, snippet, or correction — renders as a dimmed
+    /// version of the user's OWN text color so it reads as an inline
+    /// continuation of the line, exactly like Cotypist / macOS QuickType.
+    /// We deliberately do NOT use branded accent/amber/green colors: those read
+    /// as a floating tag above the text instead of inline ghost text, which is
+    /// exactly the "yellow ghost above the line" the user disliked.
     private var foreground: Color {
-        switch model.hint {
-        case .completion:
-            // Inline autocomplete: a dimmed version of the user's OWN text
-            // color so it reads as a continuation of the same line — exactly
-            // like macOS QuickType. Never accent/green.
-            if let c = model.style.rgba, c.count == 4 {
-                return Color(.sRGB, red: c[0], green: c[1], blue: c[2], opacity: 0.5)
-            }
-            // Host color unknown — neutral gray that reads as faded text in
-            // both light and dark, not a branded color.
-            return Color.secondary.opacity(0.9)
-        case .snippet:
-            // Snippets/emoji are an explicit insertion, so a subtle accent is OK.
-            return QColors.accent.opacity(0.8)
-        case .spellingFix, .grammarFix:
-            // Corrections are deliberately distinct (they replace text), but
-            // muted so they don't shout.
-            return QColors.warning.opacity(0.9)
+        if let c = model.style.rgba, c.count == 4 {
+            return Color(.sRGB, red: c[0], green: c[1], blue: c[2], opacity: 0.5)
         }
+        // Host color unknown — neutral gray that reads as faded text in both
+        // light and dark.
+        return Color.secondary.opacity(0.9)
     }
 }

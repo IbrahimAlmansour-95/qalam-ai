@@ -115,7 +115,30 @@ actor OllamaService {
 
     /// Launch `ollama serve` in the background. Captures stderr so failures
     /// don't disappear into the void.
+    /// Kill any processes from OUR bundled Ollama (serve + runner children),
+    /// matched by the bundle helper path so a system Ollama is never touched.
+    /// Synchronous + nonisolated so it can run from `applicationWillTerminate`.
+    nonisolated static func killBundledEngine() {
+        let helperPath = Bundle.main.bundlePath + "/Contents/Helpers/Ollama"
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        p.arguments = ["-f", helperPath]
+        do {
+            try p.run()
+            p.waitUntilExit()
+        } catch {
+            NSLog("QalamAI: killBundledEngine pkill failed: %@", error.localizedDescription)
+        }
+    }
+
     func startServer() async {
+        // Self-heal: if we aren't tracking a serve process, any bundled Ollama
+        // still running is an orphan from a prior unclean exit — clear it so we
+        // don't accumulate model-loaded runners that thrash memory. (A SYSTEM
+        // Ollama lives at a different path and is left alone, then reused below.)
+        if serveProcess == nil {
+            Self.killBundledEngine()
+        }
         // Re-probe first — if someone else already runs Ollama (or our last
         // serve is still alive), we don't need to spawn another.
         await probe()
@@ -228,6 +251,9 @@ actor OllamaService {
     func stopServer() {
         serveProcess?.terminate()
         serveProcess = nil
+        // SIGTERM to `ollama serve` doesn't always reap its runner children;
+        // pkill the whole bundled set by path as a backstop.
+        Self.killBundledEngine()
         setState(.stopped)
     }
 

@@ -14,6 +14,13 @@ enum AppearanceManager {
         default:      appearance = nil   // follow the system
         }
         NSApp.appearance = appearance
+        // Setting NSApp.appearance alone doesn't reliably re-render windows that
+        // are already on screen (the Settings window, menu-bar popover, overlay
+        // panels), so push the appearance onto every existing window too. Their
+        // SwiftUI content then re-resolves the dynamic QColors immediately.
+        for window in NSApp.windows {
+            window.appearance = appearance
+        }
     }
 
     /// Convenience: apply the current preference.
