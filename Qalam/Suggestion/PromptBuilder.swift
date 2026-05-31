@@ -1,5 +1,15 @@
 import Foundation
 
+/// Builds a LEAN inline-completion prompt.
+///
+/// Design (mirrors how Cotypist and other good local autocompletes behave):
+/// small local models complete best when the prompt is short and dominated by
+/// the user's *immediate* text — not buried under instructions and injected
+/// context. So we lead with a one-line instruction, add only cheap high-signal
+/// hints (app, mode), and put the recent text last so the model just continues
+/// it. Heavy/optional context (clipboard, screen OCR, nearby UI text) is
+/// included only briefly as background, because for a 5B model it more often
+/// pulls the completion off-topic than helps.
 enum PromptBuilder {
     static func build(textBeforeCursor: String,
                       styleContext: String,
@@ -13,92 +23,66 @@ enum PromptBuilder {
                       personalInfo: String? = nil) -> String {
         let n = max(1, maxWords)
 
-        // Target length nudge — get the model to actually USE the budget for
-        // multi-word completions when the context allows, instead of always
-        // taking the easy 1-word route.
-        let lengthDirective: String
-        if n == 1 {
-            lengthDirective = "Output ONLY the single next word."
-        } else if n <= 3 {
-            lengthDirective = "Output the next 2-\(n) words when possible — at minimum the next word."
-        } else {
-            lengthDirective = "Output the next 3-\(n) words to give the user a useful, contextual continuation. Never output a full sentence past \(n) words."
-        }
+        // The immediate text is what matters most. Feed the tail (a paragraph
+        // or two), starting at a word boundary, not the whole document.
+        let tail = recentTail(textBeforeCursor, maxChars: 480)
 
-        let basePrompt = """
-        You are an inline autocomplete engine, like macOS's built-in QuickType predictive text.
-
-        TASK: Given the user's text so far, output the next words they are most \
-        likely to type, written in the SAME tone, casing, language, and style.
-
-        \(lengthDirective)
-
-        HARD RULES:
-        - Never write more than \(n) words.
-        - Never repeat or paraphrase what the user already typed. Begin with the \
-          NEXT word after their cursor, not a rewording of what's there.
-        - No preamble, no quotes, no labels, no explanation.
-        - No trailing punctuation unless the next character is naturally punctuation.
-        - Match the user's language EXACTLY (English → English, Arabic → Arabic, \
-          Spanish → Spanish, Hinglish → Hinglish, Norwegian → Norwegian).
-        - If you are genuinely unsure, output an empty line.
-
-        Good examples (\(n)-word budget):
-          Input:  "Hi my name is"
-          Output: "\(n >= 3 ? "Ibrahim and I" : (n >= 2 ? "Ibrahim Almansour" : "Ibrahim"))"
-
-          Input:  "Please find attached the"
-          Output: "\(n >= 3 ? "document you requested" : (n >= 2 ? "document you" : "document"))"
-
-          Input:  "I'll meet you at the"
-          Output: "\(n >= 3 ? "office at three" : (n >= 2 ? "office tomorrow" : "office"))"
-
-          Input:  "اسمي إبراهيم وأنا"
-          Output: "\(n >= 3 ? "أعمل في الرياض" : (n >= 2 ? "أعمل في" : "أعمل"))"
+        let countPhrase = n == 1 ? "the single next word" : "the next \(n) words or fewer"
+        var prompt = """
+        Continue the text below. Output ONLY \(countPhrase) the user would most \
+        likely type next — in the same language, casing, and tone. Do not repeat \
+        what is already written, and do not add quotes, labels, or explanations.
         """
 
-        var parts: [String] = [basePrompt]
-        // Telling the model which app the user is in materially improves
-        // relevance — completions in Mail read like email, in a chat app like
-        // a message, in Xcode like code. Costs nothing (no extra permission).
+        // Cheap, high-signal hints only.
+        var hints: [String] = []
         if let appName, !appName.isEmpty {
-            parts.append("The user is typing in the app: \(appName). Match how people write there.")
+            hints.append("App: \(appName).")
         }
-        if !mode.instruction.isEmpty && mode.id != WritingMode.neutral.id {
-            parts.append("Mode: \(mode.name). \(mode.instruction)")
+        if mode.id != WritingMode.neutral.id, !mode.instruction.isEmpty {
+            hints.append("Tone: \(mode.instruction)")
         }
-        // The user's own details — use them to complete contextually (e.g.
-        // after "reach me at" or "my name is"), but never volunteer info the
-        // user isn't already heading toward.
         if let info = personalInfo?.trimmingCharacters(in: .whitespacesAndNewlines),
            !info.isEmpty {
-            parts.append("About the user (use ONLY when they're clearly typing it, e.g. their name or contact details):\n\(info)")
+            hints.append("User details (use only if they're clearly typing them): \(info)")
         }
-        let trimmedStyle = styleContext.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedStyle.isEmpty {
-            parts.append("Recent style examples (match this voice): \(trimmedStyle)")
+        if !hints.isEmpty {
+            prompt += "\n" + hints.joined(separator: " ")
         }
-        // Optional context sources — each is bounded by its provider and only
-        // present when the user enabled it. They inform the completion but the
-        // model must still continue ONLY from the cursor.
-        if let surrounding = surroundingContext?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !surrounding.isEmpty {
-            parts.append("Nearby on-screen text (for context, do not repeat):\n\(surrounding)")
+
+        // Optional context — brief background only, hard-capped so it can't
+        // dominate the immediate text. Each is opt-in via settings.
+        var background: [String] = []
+        if let s = surroundingContext?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty {
+            background.append(String(s.suffix(220)))
         }
-        if let screen = screenContext?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !screen.isEmpty {
-            parts.append("Visible text around the cursor (for context, do not repeat):\n\(screen)")
+        if let c = clipboardContext?.trimmingCharacters(in: .whitespacesAndNewlines), !c.isEmpty {
+            background.append("Clipboard: \(String(c.suffix(160)))")
         }
-        if let clip = clipboardContext?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !clip.isEmpty {
-            parts.append("The user's clipboard (may be relevant, do not repeat verbatim):\n\(clip)")
+        if let sc = screenContext?.trimmingCharacters(in: .whitespacesAndNewlines), !sc.isEmpty {
+            background.append(String(sc.suffix(160)))
         }
-        if let after = textAfterCursor?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !after.isEmpty {
-            parts.append("Text that comes AFTER the cursor (your continuation must fit before it):\n\(after)")
+        if !background.isEmpty {
+            prompt += "\n\nBackground (context only, do not copy):\n" + background.joined(separator: "\n")
         }
-        parts.append("User's text so far:\n\(textBeforeCursor)")
-        parts.append("Your output (next \(n == 1 ? "word only" : "1-\(n) words only"), nothing else):")
-        return parts.joined(separator: "\n\n")
+
+        if let after = textAfterCursor?.trimmingCharacters(in: .whitespacesAndNewlines), !after.isEmpty {
+            prompt += "\n\nYour continuation must fit before this following text: \(String(after.prefix(80)))"
+        }
+
+        prompt += "\n\nText:\n\(tail)\n\nContinuation:"
+        return prompt
+    }
+
+    /// The trailing slice of the text, beginning at a word boundary, so the
+    /// model sees recent local context rather than the entire document.
+    private static func recentTail(_ text: String, maxChars: Int) -> String {
+        guard text.count > maxChars else { return text }
+        let slice = String(text.suffix(maxChars))
+        // Start at the next space so we don't begin mid-word.
+        if let spaceIdx = slice.firstIndex(of: " ") {
+            return String(slice[slice.index(after: spaceIdx)...])
+        }
+        return slice
     }
 }

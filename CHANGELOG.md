@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.3.7 — 2026-05-31
+
+- **Fixed slow suggestions.** The bundled Ollama engine wasn't shut down on quit, so it (and its model-loaded runners) were orphaned on every launch and piled up, thrashing memory. The engine is now stopped on quit, its runner children are reaped, and any orphans from a prior crash are cleared on launch. Warm completions are ~0.3s again.
+- **Pre-warm the model at launch** so your first suggestion is instant instead of paying a multi-second cold load.
+- **Fixed the black title-bar strip in Light mode** — the Settings window forced a dark appearance and background; it now follows your chosen theme.
+- **Ghost text no longer clips and sits on the baseline** — its width is measured directly from the font (long suggestions were truncated to a sliver) and it bottom-aligns to the line.
+- **New: Inline suggestion calibration** (General settings) — Size and Vertical sliders to align the ghost in apps that misreport caret geometry (e.g. Apple Notes).
+
+## 1.3.6 — 2026-05-31
+
+- **Ghost text now matches your text's size, so it reads as truly inline.** It's sized from the caret's actual line height instead of the app-reported font size — those disagree in large-font docs, zoomed/presentation views, and some HiDPI cases, which made the suggestion look like a tiny floating tag. Now it scales to match the surrounding text.
+
+## 1.3.5 — 2026-05-31
+
+- **Autocomplete actually works now.** Root cause of the empty/garbage suggestions: modern models like Gemma 4 are *reasoning* models that send their answer to a hidden "thinking" channel, leaving the response empty unless thinking is disabled. We now send `think: false` to Ollama, so the model answers directly — and faster (no hidden reasoning tokens). Verified producing relevant English and Arabic completions.
+
+## 1.3.4 — 2026-05-31
+
+- **Much better, on-context completions.** Rebuilt the prompt to be lean and completion-focused (like Cotypist): it now leads with your immediate text instead of burying a small model under a long instruction block plus app/clipboard/screen/style context. Lower temperature, single-line output, and harder cleanup (strips echoed text, stray labels, and rambling) make suggestions far more relevant and consistent.
+
+## 1.3.3 — 2026-05-31
+
+- **Fixed ghost text appearing above the line on multi-monitor setups.** The caret position was converted using a mismatched coordinate space, which picked the wrong screen and offset the suggestion vertically. Now uses a correct global flip — suggestions sit inline on the caret's line on every display.
+- **Ghost text is always dimmed inline now (no more yellow/amber).** Completions, snippets, and corrections all render as a faded version of your own text color, like Cotypist — instead of a branded color that read as a floating tag.
+- **Snappier suggestions.** The model is kept warm (30-min keep-alive) so quick typing bursts don't pay the multi-second cold-reload cost.
+- Builds are now signed with a stable self-signed identity, so the Accessibility grant survives future updates instead of resetting each time.
+
+## 1.3.2 — 2026-05-31
+
+- **Appearance switch now applies live.** Setting NSApp.appearance alone didn't repaint already-open windows; the theme is now pushed onto every window so Light/Dark/System takes effect immediately.
+- **Auto re-prompt for Accessibility after an update.** When a returning user launches a build whose (ad-hoc) signature changed — which makes macOS silently drop the Accessibility grant and stops autocomplete — QalamAI now triggers the system permission prompt and opens Settings, instead of silently doing nothing.
+
 ## 1.3.1 — 2026-05-31
 
 - **Fixed a crash on launch.** A duplicated block of localization strings made the translation table trap the moment any text was loaded, so the app quit immediately. Removed the duplicate. (Affected 1.2.0 and 1.3.0.)

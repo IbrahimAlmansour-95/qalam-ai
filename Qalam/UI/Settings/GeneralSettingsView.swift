@@ -19,6 +19,7 @@ struct GeneralSettingsView: View {
                 header
                 languageCard
                 appearanceCard
+                ghostCalibrationCard
                 engineCard
                 togglesCard
                 acceptKeyCard
@@ -165,6 +166,58 @@ struct GeneralSettingsView: View {
                 .font(QFonts.caption)
                 .foregroundStyle(QColors.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var ghostCalibrationCard: some View {
+        QCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L.t(.generalGhostCalibration))
+                    .font(QFonts.bodyMed)
+                    .foregroundStyle(QColors.textPrimary)
+                Text(L.t(.generalGhostCalibrationHelp))
+                    .font(QFonts.caption)
+                    .foregroundStyle(QColors.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                // Size scale
+                HStack(spacing: 10) {
+                    Text(L.t(.generalGhostSize))
+                        .font(QFonts.caption)
+                        .foregroundStyle(QColors.textSecondary)
+                        .frame(width: 90, alignment: .leading)
+                    Slider(value: Binding(get: { prefs.ghostSizeScale },
+                                          set: { prefs.ghostSizeScale = $0 }),
+                           in: 0.5...2.5, step: 0.05)
+                    Text(String(format: "%.2f×", prefs.ghostSizeScale))
+                        .font(QFonts.caption.monospacedDigit())
+                        .foregroundStyle(QColors.textSecondary)
+                        .frame(width: 48, alignment: .trailing)
+                }
+
+                // Vertical offset
+                HStack(spacing: 10) {
+                    Text(L.t(.generalGhostVOffset))
+                        .font(QFonts.caption)
+                        .foregroundStyle(QColors.textSecondary)
+                        .frame(width: 90, alignment: .leading)
+                    Slider(value: Binding(get: { prefs.ghostVerticalOffset },
+                                          set: { prefs.ghostVerticalOffset = $0 }),
+                           in: -30...30, step: 1)
+                    Text("\(Int(prefs.ghostVerticalOffset)) pt")
+                        .font(QFonts.caption.monospacedDigit())
+                        .foregroundStyle(QColors.textSecondary)
+                        .frame(width: 48, alignment: .trailing)
+                }
+
+                HStack {
+                    Spacer()
+                    QButton(title: L.t(.generalGhostReset), style: .ghost, size: .small) {
+                        prefs.ghostSizeScale = 1.0
+                        prefs.ghostVerticalOffset = 0
+                    }
+                }
+            }
         }
     }
 

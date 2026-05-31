@@ -28,19 +28,79 @@ struct SuggestionResult: Sendable, Equatable {
                      context: String,
                      kind: SuggestionKind = .llm,
                      maxWords: Int = 5) -> SuggestionResult {
-        var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Strip surrounding quotes the model occasionally adds.
-        cleaned = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: "\"'`"))
-        guard !cleaned.isEmpty else {
-            return SuggestionResult(text: "", words: [], basedOnContext: context, kind: kind)
+        func empty() -> SuggestionResult {
+            SuggestionResult(text: "", words: [], basedOnContext: context, kind: kind)
         }
-        // Belt + braces clip — models sometimes ignore the prompt and run on.
+
+        var cleaned = text
+        if kind == .llm {
+            // 1. Keep only the FIRST line — small models often ramble onto new
+            //    lines or add a second sentence we don't want inline.
+            if let nl = cleaned.firstIndex(where: { $0.isNewline }) {
+                cleaned = String(cleaned[..<nl])
+            }
+            // 2. Drop a leading label the model sometimes emits
+            //    ("Continuation:", "Output:", "Sure,", etc.).
+            cleaned = stripLeadingLabel(cleaned)
+        }
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Strip surrounding quotes the model occasionally adds.
+        cleaned = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: "\"'`“”«»"))
+
+        if kind == .llm {
+            // 3. Remove any echo of what the user already typed: if the model
+            //    repeated the tail of the context, drop the overlapping prefix
+            //    so the ghost is a genuine continuation, not a repeat.
+            cleaned = stripContextEcho(cleaned, context: context)
+            cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        guard !cleaned.isEmpty else { return empty() }
+
+        // Belt + braces clip — models sometimes ignore the word budget.
         var tokens = cleaned.split(whereSeparator: { $0 == " " }).map(String.init)
         if kind == .llm, tokens.count > maxWords {
             tokens = Array(tokens.prefix(maxWords))
         }
         let final = tokens.joined(separator: " ")
+        guard !final.isEmpty else { return empty() }
         return SuggestionResult(text: final, words: tokens, basedOnContext: context, kind: kind)
+    }
+
+    /// Strip a leading "label:"-style preamble or filler the model prepends.
+    private static func stripLeadingLabel(_ s: String) -> String {
+        var out = s.trimmingCharacters(in: .whitespaces)
+        let labels = ["continuation:", "output:", "completion:", "answer:",
+                      "sure,", "sure.", "here:", "here's", "here is"]
+        let lower = out.lowercased()
+        for label in labels where lower.hasPrefix(label) {
+            out = String(out.dropFirst(label.count)).trimmingCharacters(in: .whitespaces)
+            break
+        }
+        return out
+    }
+
+    /// If the completion repeats the trailing words of the context (a common
+    /// small-model failure), drop that overlapping prefix so we only keep the
+    /// genuinely new continuation.
+    private static func stripContextEcho(_ completion: String, context: String) -> String {
+        let ctx = context.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !ctx.isEmpty, !completion.isEmpty else { return completion }
+        let ctxLower = ctx.lowercased()
+        let compLower = completion.lowercased()
+        // Try the longest context suffix (up to 60 chars) that the completion
+        // starts with, and strip it.
+        let maxOverlap = min(60, min(ctxLower.count, compLower.count))
+        if maxOverlap > 0 {
+            for len in stride(from: maxOverlap, through: 3, by: -1) {
+                let ctxSuffix = String(ctxLower.suffix(len))
+                if compLower.hasPrefix(ctxSuffix) {
+                    let idx = completion.index(completion.startIndex, offsetBy: len)
+                    return String(completion[idx...])
+                }
+            }
+        }
+        return completion
     }
 }
 
@@ -450,7 +510,11 @@ final class SuggestionEngine {
         if let avoid = avoidText, !avoid.isEmpty {
             prompt += "\n\nProvide a DIFFERENT continuation than: \"\(avoid)\""
         }
-        let temperature = temperatureOverride ?? mode.temperature
+        // Inline completion wants on-context, near-deterministic output, so cap
+        // the temperature low (a creative mode's higher temp drifts off-topic
+        // for autocomplete). Cycling for an alternative passes an explicit
+        // higher override.
+        let temperature = temperatureOverride ?? min(mode.temperature, 0.2)
 
         isStreaming = true
         var assembled = ""
@@ -462,7 +526,7 @@ final class SuggestionEngine {
                     model: model,
                     maxTokens: maxTokens,
                     temperature: temperature,
-                    stop: ["\n\n", "###"]
+                    stop: ["\n", "\n\n", "###"]
                 ) {
                     try Task.checkCancellation()
                     assembled += token

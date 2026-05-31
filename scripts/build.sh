@@ -185,10 +185,31 @@ fi
 echo "→ Writing PkgInfo..."
 printf 'APPL????' > "$CONTENTS/PkgInfo"
 
-echo "→ Ad-hoc codesigning with entitlements..."
-codesign --force --deep --sign - \
-  --entitlements Qalam/Resources/Qalam.entitlements \
-  "$APP_BUNDLE"
+# Prefer a STABLE self-signed identity (see scripts/setup-signing-cert.sh) so
+# the app's code identity — and therefore its macOS Accessibility / Input
+# Monitoring grants — survive every rebuild. Fall back to ad-hoc if it isn't
+# installed (or can't be used), so the build never hard-fails.
+SIGN_IDENTITY="QalamAI Self-Signed"
+if security find-identity -v -p codesigning 2>/dev/null | grep -q "$SIGN_IDENTITY"; then
+    echo "→ Codesigning with stable identity \"$SIGN_IDENTITY\"…"
+    if codesign --force --deep --sign "$SIGN_IDENTITY" \
+        --entitlements Qalam/Resources/Qalam.entitlements \
+        "$APP_BUNDLE" 2>/dev/null; then
+        echo "  ✓ Signed with \"$SIGN_IDENTITY\" (Accessibility grant persists across updates)."
+    else
+        echo "  ⚠︎ Signing with \"$SIGN_IDENTITY\" failed (keychain not authorized?) — falling back to ad-hoc."
+        echo "    Run: bash scripts/setup-signing-cert.sh   to enable stable signing."
+        codesign --force --deep --sign - \
+          --entitlements Qalam/Resources/Qalam.entitlements "$APP_BUNDLE"
+    fi
+else
+    echo "→ Ad-hoc codesigning with entitlements (no stable identity installed)…"
+    echo "  Tip: run  bash scripts/setup-signing-cert.sh  so the Accessibility"
+    echo "       grant survives future updates instead of resetting each time."
+    codesign --force --deep --sign - \
+      --entitlements Qalam/Resources/Qalam.entitlements \
+      "$APP_BUNDLE"
+fi
 
 echo "→ Verifying arm64..."
 BINARY="$MACOS_DIR/$APP_NAME"

@@ -254,13 +254,17 @@ final class AccessibilityMonitor {
         }
         guard let caret = rect else { return nil }
 
-        // AX returns top-left origin coordinates relative to the primary
-        // screen's frame. Convert to AppKit bottom-left.
-        guard let screen = NSScreen.screens.first(where: {
-                NSPointInRect(NSPoint(x: caret.origin.x, y: caret.origin.y), $0.frame)
-              }) ?? NSScreen.main
-        else { return caret }
-        let flippedY = screen.frame.maxY - caret.origin.y - caret.height
+        // AX/Quartz global coordinates use a TOP-LEFT origin (y grows down from
+        // the top of the PRIMARY display). AppKit uses a BOTTOM-LEFT origin (y
+        // grows up). The conversion is a single global transform based on the
+        // primary display's height — it does NOT depend on which monitor the
+        // caret is on. The previous code matched a top-left point against
+        // bottom-left screen frames, which on multi-monitor setups selected the
+        // wrong screen and offset the ghost vertically ("above the line"). Use
+        // the primary screen height for a correct global flip.
+        let primaryHeight = (NSScreen.screens.first { $0.frame.origin == .zero }
+                             ?? NSScreen.main)?.frame.height ?? caret.maxY
+        let flippedY = primaryHeight - caret.origin.y - caret.height
         return CGRect(x: caret.origin.x, y: flippedY, width: caret.width, height: caret.height)
     }
 

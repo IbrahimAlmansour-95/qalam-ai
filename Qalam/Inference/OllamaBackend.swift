@@ -25,6 +25,18 @@ struct OllamaBackend: LLMBackend {
                         "model": model,
                         "prompt": prompt,
                         "stream": true,
+                        // CRITICAL: disable "thinking". Reasoning models (Gemma 4,
+                        // Qwen 3, etc.) otherwise emit ALL their output into a
+                        // separate `thinking` channel and leave `response` empty —
+                        // which looked like "the model produces nothing / garbage".
+                        // With think:false they answer directly, and it's also far
+                        // faster (no hidden reasoning tokens) — exactly what inline
+                        // autocomplete needs. Harmless for non-thinking models.
+                        "think": false,
+                        // Keep the model resident for 30 min so quick bursts of
+                        // typing don't pay the multi-second cold-reload cost
+                        // every time (Ollama unloads after 5 min by default).
+                        "keep_alive": "30m",
                         "options": [
                             "temperature": temperature,
                             "num_predict": maxTokens,

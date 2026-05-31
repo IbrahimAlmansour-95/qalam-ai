@@ -70,8 +70,39 @@ final class ModelManager {
     }
 
     private func observeOllamaState() async {
+        var wasRunning = false
         for await state in await OllamaService.shared.stateStream() {
             self.ollamaState = state
+            // Pre-warm the active model the moment the engine becomes ready, so
+            // the first real suggestion is instant instead of paying the
+            // multi-second cold-load. (Warm inference is ~0.3s; a cold load is
+            // ~8s.) Only fire on the transition into running.
+            if state == .running, !wasRunning {
+                prewarmActiveModel()
+            }
+            wasRunning = (state == .running)
+        }
+    }
+
+    /// Fire-and-forget 1-token request to load the active model into memory and
+    /// reset its keep-alive timer.
+    func prewarmActiveModel() {
+        let model = UserPreferences.shared.activeModelTag
+        guard !model.isEmpty else { return }
+        Task.detached {
+            var req = URLRequest(url: Constants.Ollama.generateURL)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            let body: [String: Any] = [
+                "model": model,
+                "prompt": " ",
+                "stream": false,
+                "think": false,
+                "keep_alive": "30m",
+                "options": ["num_predict": 1],
+            ]
+            req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+            _ = try? await URLSession.shared.data(for: req)
         }
     }
 

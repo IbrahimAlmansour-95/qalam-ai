@@ -269,6 +269,12 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     case generalAppearanceSystem
     case generalAppearanceLight
     case generalAppearanceDark
+    // ━━━ Ghost calibration ━━━
+    case generalGhostCalibration
+    case generalGhostCalibrationHelp
+    case generalGhostSize
+    case generalGhostVOffset
+    case generalGhostReset
     // ━━━ In-app update install ━━━
     case updateInstall
     case updateDownloading
@@ -800,6 +806,18 @@ enum Translations {
         .generalAppearanceSystem: [ .english: "System", .arabic: "النظام" ],
         .generalAppearanceLight: [ .english: "Light", .arabic: "فاتح" ],
         .generalAppearanceDark: [ .english: "Dark", .arabic: "داكن" ],
+        // ━━━ Ghost calibration ━━━
+        .generalGhostCalibration: [
+            .english: "Inline suggestion calibration",
+            .arabic:  "ضبط الاقتراح ضمن السطر"
+        ],
+        .generalGhostCalibrationHelp: [
+            .english: "Fine-tune the ghost text's size and vertical position. Most apps need no change; use this for apps like Notes that report an inaccurate cursor size, so the suggestion lands on the line.",
+            .arabic:  "اضبط حجم النص الشبحي وموضعه العمودي. معظم التطبيقات لا تحتاج لتغيير؛ استخدم هذا مع تطبيقات مثل الملاحظات التي تُبلّغ عن حجم مؤشر غير دقيق، ليظهر الاقتراح على السطر."
+        ],
+        .generalGhostSize: [ .english: "Size", .arabic: "الحجم" ],
+        .generalGhostVOffset: [ .english: "Vertical", .arabic: "عمودي" ],
+        .generalGhostReset: [ .english: "Reset", .arabic: "إعادة تعيين" ],
         // ━━━ In-app update install ━━━
         .updateInstall: [ .english: "Download & Install", .arabic: "تنزيل وتثبيت" ],
         .updateDownloading: [ .english: "Downloading…", .arabic: "جارٍ التنزيل…" ],

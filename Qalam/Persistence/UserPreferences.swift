@@ -123,6 +123,17 @@ final class UserPreferences {
         }
     }
 
+    /// Inline ghost-text calibration for apps that misreport caret geometry
+    /// (e.g. Apple Notes). `ghostSizeScale` multiplies the ghost font size;
+    /// `ghostVerticalOffset` nudges it in points (positive = down). Defaults
+    /// (1.0, 0) are no-ops for well-behaved apps.
+    var ghostSizeScale: Double {
+        didSet { defaults.set(ghostSizeScale, forKey: Keys.ghostSizeScale) }
+    }
+    var ghostVerticalOffset: Double {
+        didSet { defaults.set(ghostVerticalOffset, forKey: Keys.ghostVerticalOffset) }
+    }
+
     private init() {
         defaults.register(defaults: [
             Keys.isEnabled: true,
@@ -147,6 +158,8 @@ final class UserPreferences {
             Keys.showAcceptHint: true,
             Keys.customModelTags: [String](),
             Keys.appearance: "system",
+            Keys.ghostSizeScale: 1.0,
+            Keys.ghostVerticalOffset: 0.0,
             // DO NOT register firstLaunchDate as a fallback — register's
             // value shifts every launch (it's a fresh Date()), which masks
             // the on-disk read with a non-zero in-memory default and the
@@ -175,6 +188,8 @@ final class UserPreferences {
         self.showAcceptHint          = defaults.bool(forKey: Keys.showAcceptHint)
         self.customModelTags         = (defaults.array(forKey: Keys.customModelTags) as? [String]) ?? []
         self.appearance              = defaults.string(forKey: Keys.appearance) ?? "system"
+        self.ghostSizeScale          = defaults.object(forKey: Keys.ghostSizeScale) as? Double ?? 1.0
+        self.ghostVerticalOffset     = defaults.object(forKey: Keys.ghostVerticalOffset) as? Double ?? 0.0
         if let raw = defaults.object(forKey: Keys.snoozeUntil) as? Double {
             self.snoozeUntil = Date(timeIntervalSince1970: raw)
         } else {
@@ -219,5 +234,7 @@ final class UserPreferences {
         static let snoozeUntil             = "qalam.snoozeUntil"
         static let customModelTags         = "qalam.customModelTags"
         static let appearance              = "qalam.appearance"
+        static let ghostSizeScale          = "qalam.ghostSizeScale"
+        static let ghostVerticalOffset     = "qalam.ghostVerticalOffset"
     }
 }
