@@ -1,5 +1,17 @@
 # Changelog
 
+<<<<<<< Updated upstream
+=======
+## 1.3.11 — 2026-05-31
+
+- **Fixed the onboarding window drifting/"floating".** The Welcome/Get Started window could be dragged by clicking anywhere on its background, so it moved around while you tried to press buttons. It now stays put (still movable by its title bar).
+
+## 1.3.10 — 2026-05-31
+
+- **Restored stable inline placement.** The v1.3.9 attempt to keep the ghost on-field in apps that misreport the caret (clamp, then fit-or-hide) regressed the apps that worked — it could overlap text or stop showing Arabic in Notes. Reverted to the proven placement: Arabic works in Notes and other well-behaved fields, English everywhere, plus the Terminal/Chromium caret fixes.
+- Known limitation: **Telegram reports the Arabic (RTL) caret incorrectly** (pinned to the box edge), so inline suggestions there can be mispositioned. This is a Telegram Accessibility issue we can't correct without breaking other apps; left as-is by design.
+
+>>>>>>> Stashed changes
 ## 1.3.9 — 2026-05-31
 
 - **Ghost can no longer fly off the text field.** Some apps misreport the caret — e.g. Telegram pins the Arabic (RTL) caret to the box's left edge — which threw the suggestion far outside the field. The ghost is now clamped to stay within the focused field's bounds. (No effect on apps that report the caret correctly.)
