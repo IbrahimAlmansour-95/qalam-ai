@@ -70,9 +70,16 @@ enum Uninstaller {
         if keepData {
             ProfileStore.shared.flushPendingSave()
             SyncMetadata.shared.flushPendingSave()
+            PersonalizationStore.flushPendingSaveBlocking()
         } else {
             ProfileStore.shared.cancelPendingSave()
             SyncMetadata.shared.cancelPendingSave()
+            // The sample store's debounced save re-creates its own 0700
+            // directory, so a write landing after the trash loop below would
+            // restore the encrypted writing store — with its keychain key
+            // already deleted, i.e. unopenable and unexplainable. Raised
+            // synchronously here, before anything is trashed.
+            PersonalizationStore.disableWrites()
         }
         var toTrash: [URL] = [Bundle.main.bundleURL]
         if let logs = logsDir { toTrash.append(logs) }

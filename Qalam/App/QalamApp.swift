@@ -115,6 +115,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ProfileStore.shared.flushPendingSave()
         SyncManager.shared.stopActivity()
         SyncMetadata.shared.flushPendingSave()
+        // The sample store debounces its write by 3 s, so quitting right after
+        // a recorded paragraph would drop exactly the newest sample — the one
+        // retrieval weights most. Bounded, so a wedged actor can't hold the
+        // quit.
+        PersonalizationStore.flushPendingSaveBlocking()
         // Quitting: the engine's exit below is intentional — don't restart it.
         OllamaService.shutdownFlag.set()
         // Stop the bundled Ollama engine we launched, otherwise it (and its

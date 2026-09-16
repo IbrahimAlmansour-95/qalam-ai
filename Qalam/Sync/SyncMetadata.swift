@@ -175,28 +175,48 @@ enum SyncHooks {
         UserPreferences.shared.syncEnabled && !SyncMetadata.shared.isApplyingRemote
     }
 
+    /// Whether a DELETION is worth recording — a wider gate than `isActive`.
+    ///
+    /// Turning sync off does not remove the encrypted copy from iCloud Drive
+    /// (the alert deliberately offers "Keep cloud copy", and the samples
+    /// sub-toggle never removes anything at all). So an item deleted while
+    /// sync is off is still in the remote payload, and without a local
+    /// tombstone the next pull has nothing to beat it with: the merge treats
+    /// it as a key we simply don't have, writes it back into the store and
+    /// republishes it to every other Mac.
+    ///
+    /// The one Mac that has to stay out of this is one that never synced:
+    /// `tombstone()` calls `ensureDeviceID()`, and minting that id is exactly
+    /// what the uninstaller reads as "this Mac has iCloud data to look for".
+    /// `everEnabled` is true only when the id already exists, so nothing here
+    /// can create one.
+    static var tombstonesActive: Bool {
+        (UserPreferences.shared.syncEnabled || SyncManager.everEnabled)
+            && !SyncMetadata.shared.isApplyingRemote
+    }
+
     static func changed(_ key: String) {
         guard isActive else { return }
         SyncMetadata.shared.touch(key)
     }
 
     static func deleted(_ key: String) {
-        guard isActive else { return }
+        guard tombstonesActive else { return }
         SyncMetadata.shared.tombstone(key)
     }
 
     /// A snippet's trigger is its key, so a rename is a delete plus an add.
     static func renamed(from oldKey: String, to newKey: String) {
+        // Only the tombstone half outlives sync being off. Stamping a fresh
+        // date on the new key must not: an untouched item is `.distantPast`
+        // on purpose, so a Mac that was dormant for months loses to the cloud
+        // copy instead of overwriting it.
+        if oldKey != newKey, tombstonesActive { SyncMetadata.shared.tombstone(oldKey) }
         guard isActive else { return }
-        if oldKey != newKey { SyncMetadata.shared.tombstone(oldKey) }
         SyncMetadata.shared.touch(newKey)
     }
 
     // MARK: Writing samples (separate file, separate opt-in)
-
-    static var samplesActive: Bool {
-        isActive && UserPreferences.shared.syncIncludePersonalization
-    }
 
     /// Samples are immutable and carry their own date, so a new one needs no
     /// metadata entry and no push of its own: the sample file is large, and
@@ -204,8 +224,16 @@ enum SyncHooks {
     /// iCloud Drive busy for no benefit. New samples ride the regular
     /// 15-minute cycle (or "Sync now"). Deletions do need a tombstone, and
     /// those push like any other change.
+    ///
+    /// A deletion is recorded even while sync or the samples opt-in is
+    /// switched OFF — see `tombstonesActive`. Neither switch removes a sample
+    /// file already in iCloud Drive, so without a tombstone the next samples
+    /// cycle reads every deleted sample back out of the cloud copy and
+    /// re-adds it. `sample:` keys never reach the settings bundle
+    /// (`SyncKey.isSettings` excludes them), so the pending tombstones sit in
+    /// local metadata until sample sync actually runs again.
     static func samplesDeleted(_ ids: [String]) {
-        guard samplesActive, !ids.isEmpty else { return }
+        guard tombstonesActive, !ids.isEmpty else { return }
         SyncMetadata.shared.tombstone(ids.map { SyncKey.sample($0) })
     }
 }

@@ -90,32 +90,40 @@ final class KeystrokeInterceptor {
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
         let mods = KeyMods(event.flags)
         let prefs = UserPreferences.shared
+        // Held keys repeat ~15–30×/s. The suggestion keys below WANT that
+        // (hold ⇥ to accept word by word); a global shortcut must fire once
+        // per physical press, or holding ⌘⇧Space flips pause a dozen times
+        // and lands on whichever parity the user happened to hold it for.
+        // Repeats are still consumed — passing them on after swallowing the
+        // first press would type spaces into the app and leak ⌃⌥R.
+        let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
 
         // ── Global shortcuts (no suggestion needed) ──────────────────────────
 
         // ⌘⇧Space — pause / resume everywhere.
         if keyCode == KeyCode.space, mods == [.command, .shift], prefs.shortcutPauseEnabled,
            !KnownApps.isShortcutReservedEditor(Self.frontmostBundleID()) {
-            runAfterCallback { KeystrokeInterceptor.shared.toggleGlobalPause() }
+            if !isRepeat { runAfterCallback { KeystrokeInterceptor.shared.toggleGlobalPause() } }
             return nil   // consume
         }
         // ⌃⌥⌘ + key above Tab — pause the frontmost app for 10 minutes.
         if KeyCode.isAboveTab(keyCode), mods == [.control, .option, .command],
            prefs.shortcutAppToggleEnabled {
-            runAfterCallback { KeystrokeInterceptor.shared.toggleFrontmostAppPause() }
+            if !isRepeat { runAfterCallback { KeystrokeInterceptor.shared.toggleFrontmostAppPause() } }
             return nil   // consume
         }
-        // ⌃ + key above Tab — suggest now. ⌃` toggles the terminal in VS Code,
-        // Cursor, Windsurf and Zed, so it passes through there unless that
-        // editor is set to "Force only" (where it's the only way to ask).
+        // ⌃ + key above Tab — suggest now. Editors that bind ⌃` themselves
+        // (VS Code family, Zed, Sublime Text, the JetBrains IDEs) keep it,
+        // unless that editor is set to "Force only" — where it's the only way
+        // to ask. See `KnownApps.isForceShortcutReserved`.
         if KeyCode.isAboveTab(keyCode), mods == [.control], prefs.shortcutForceActivateEnabled,
            Self.forceShortcutAllowedInFrontmostApp() {
-            runAfterCallback { KeystrokeInterceptor.shared.forceActivate() }
+            if !isRepeat { runAfterCallback { KeystrokeInterceptor.shared.forceActivate() } }
             return nil   // consume
         }
         // ⌃⌥R — tone-rewrite the current selection.
         if keyCode == KeyCode.r, mods == [.control, .option] {
-            runAfterCallback { SelectionRewriter.shared.begin() }
+            if !isRepeat { runAfterCallback { SelectionRewriter.shared.begin() } }
             return nil   // consume
         }
 
@@ -300,11 +308,13 @@ final class KeystrokeInterceptor {
         NSWorkspace.shared.frontmostApplication?.bundleIdentifier
     }
 
-    /// ⌃ + key above Tab is left to VS Code-family editors (it toggles their
-    /// terminal) unless the user set that editor to "Force only".
+    /// ⌃ + key above Tab is left to the editors whose own default keymap
+    /// binds it (VS Code family and Zed: toggle the terminal; Sublime Text:
+    /// the console; JetBrains: Quick Switch Scheme) unless the user set that
+    /// editor to "Force only", where it is the only way to ask.
     private static func forceShortcutAllowedInFrontmostApp() -> Bool {
         let bundleID = frontmostBundleID()
-        guard KnownApps.isShortcutReservedEditor(bundleID) else { return true }
+        guard KnownApps.isForceShortcutReserved(bundleID) else { return true }
         let store = ProfileStore.shared
         let resolved = store.activeResolved.bundleID == bundleID
             ? store.activeResolved

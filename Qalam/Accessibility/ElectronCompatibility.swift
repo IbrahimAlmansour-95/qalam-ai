@@ -42,6 +42,19 @@ final class ElectronCompatibility {
     private var lastEmptyReadAt: [pid_t: TimeInterval] = [:]
     private var observers: [NSObjectProtocol] = []
 
+    /// Apps the flag was applied to AUTOMATICALLY, so the next launch of one
+    /// gets it before its first failed read. Deliberately not the app's
+    /// profile: writing `improveCompatibility` there stamps `modifiedAt`,
+    /// which makes the app show up as Configured/"Customized" in the Apps
+    /// tab, exempts it from `pruneUnconfiguredApps` and pushes it to the
+    /// user's other Macs — none of which the user asked for by merely
+    /// clicking around in Slack. Lives in the same preferences plist as every
+    /// other setting, so it is no new data location for the uninstaller and
+    /// nothing new is synced.
+    private lazy var autoAppliedBundleIDs: Set<String> =
+        Set((QalamDefaults.suite.array(forKey: Self.autoAppliedKey) as? [String]) ?? [])
+
+    private static let autoAppliedKey = "qalam.electronAutoCompatBundleIDs"
     private static let emptyReadInterval: TimeInterval = 2
     private static let frameworkSuffix = "Contents/Frameworks/Electron Framework.framework"
     private static let attribute = "AXManualAccessibility" as CFString
@@ -171,18 +184,26 @@ final class ElectronCompatibility {
         guard apply(to: ref) else { return }
         guard resolved.improveCompatibility == nil else { return }
         // Remember, so the next launch of that app gets it before the first
-        // failed read.
-        ProfileStore.shared.ensureApp(bundleID: bundleID, name: app.localizedName ?? bundleID)
-        ProfileStore.shared.update(id: AppProfile.appID(bundleID)) { $0.improveCompatibility = true }
+        // failed read. The app's profile stays at "inherit".
+        rememberAutoApplied(bundleID)
+    }
+
+    private func rememberAutoApplied(_ bundleID: String) {
+        guard autoAppliedBundleIDs.insert(bundleID).inserted else { return }
+        QalamDefaults.suite.set(Array(autoAppliedBundleIDs).sorted(), forKey: Self.autoAppliedKey)
     }
 
     private func appAppeared(_ ref: AppRef?) {
         guard let ref, let bundleID = ref.bundleID, bundleID != Constants.bundleID,
               !appliedPIDs.contains(ref.pid)
         else { return }
-        // Only what the user explicitly asked for — automatic attempts go
-        // through `noteEmptyRead`, which knows a read actually failed.
-        guard ProfileStore.shared.resolve(bundleID: bundleID, host: nil).improveCompatibility == true else { return }
+        // What the user explicitly asked for, plus an app this Mac already
+        // auto-applied to in an earlier session — the flag lives in the target
+        // process, so a relaunch loses it. An explicit Off (`.some(false)`)
+        // still wins, exactly as it does in `noteEmptyRead`.
+        let resolved = ProfileStore.shared.resolve(bundleID: bundleID, host: nil).improveCompatibility
+        guard resolved == true || (resolved == nil && autoAppliedBundleIDs.contains(bundleID))
+        else { return }
         apply(to: ref)
     }
 

@@ -18,6 +18,14 @@ struct MyInfoSettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .onAppear { instructionsDraft = prefs.customInstructions }
+        // A sync pull writes `customInstructions` straight into the
+        // preference. Without this the editor keeps showing the pre-pull text
+        // and the next keystroke pushes it back over the other Mac's edit. The
+        // inequality guard makes the echo of this view's own write a no-op, so
+        // there is no feedback loop, and the cap above still truncates first.
+        .onChange(of: prefs.customInstructions) { _, newValue in
+            if newValue != instructionsDraft { instructionsDraft = newValue }
+        }
     }
 
     private var header: some View {

@@ -24,7 +24,11 @@ struct TextContext: Sendable, Equatable {
     let host: String?             // normalized web host (browsers only), else nil
     /// Browsers only: true = inside page content (an AXWebArea ancestor),
     /// false = the walk reached the window without one (browser chrome),
-    /// nil = unknown (non-browser, AX error, level cap, rate limit miss).
+    /// nil = unknown (non-browser, AX error, level cap, or a rate-limit miss
+    /// whose throttled result was a chrome verdict). A rate-limit miss can
+    /// still yield `true` plus the host of the last page-content walk in the
+    /// same app, which is the point of the throttle — a tab switch inside
+    /// 500 ms can therefore carry the previous tab's host.
     let isInWebArea: Bool?
     /// AX size of the field — read only for single-line-ish fields (role
     /// AXTextField / AXComboBox, subrole AXSearchField), else nil. Used by the

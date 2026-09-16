@@ -44,6 +44,15 @@ struct AppsSettingsView: View {
             .onChange(of: selectedID) { _, _ in
                 instructionsDraft = selectedProfile?.customInstructions ?? ""
             }
+            // A sync pull can replace the selected profile underneath the
+            // editor; without this the draft stays stale and the next
+            // keystroke pushes it back over the remote edit. `ProfileStore`
+            // normalizes "" to nil, so the `?? ""` plus the inequality guard
+            // also absorb the echo of `commitInstructions`.
+            .onChange(of: selectedProfile?.customInstructions) { _, newValue in
+                let v = newValue ?? ""
+                if v != instructionsDraft { instructionsDraft = v }
+            }
             .onChange(of: instructionsDraft) { _, newValue in commitInstructions(newValue) }
             .onChange(of: websiteDraft) { _, _ in websiteInvalid = false }
         }

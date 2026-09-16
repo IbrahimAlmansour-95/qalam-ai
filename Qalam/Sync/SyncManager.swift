@@ -109,6 +109,10 @@ final class SyncManager {
     @ObservationIgnored private var metadataObserver: NSObjectProtocol?
     @ObservationIgnored private var watchSource: DispatchSourceFileSystemObject?
     @ObservationIgnored private var quietUntil = Date.distantPast
+    /// Bumped by `stopActivity()`. A cycle that is already running is not
+    /// owned by any of the tasks that cancels, so it carries the epoch it
+    /// started with and checks it after every await — see `cycleIsStale`.
+    @ObservationIgnored private var cycleEpoch = 0
 
     private init() {
         let raw = QalamDefaults.suite.double(forKey: Self.lastSyncKey)
@@ -137,8 +141,10 @@ final class SyncManager {
         QLog.notice(.sync, "sync enabled — first pull in 10 s")
     }
 
-    /// Stops every timer and watcher (quit / uninstall).
+    /// Stops every timer and watcher (quit / uninstall / sync turned off),
+    /// and retires any cycle that is already in flight.
     func stopActivity() {
+        cycleEpoch &+= 1
         firstPullTask?.cancel(); firstPullTask = nil
         pushTask?.cancel(); pushTask = nil
         folderTask?.cancel(); folderTask = nil
@@ -282,6 +288,14 @@ final class SyncManager {
 
     // MARK: - The cycle
 
+    /// True once this cycle has been retired — the user turned sync off, quit
+    /// or uninstalled while it was suspended in an await. Everything after
+    /// such a check must return without writing to the stores, to the
+    /// metadata, to iCloud Drive or to `status` (`disable()` already set it).
+    private func cycleIsStale(_ epoch: Int) -> Bool {
+        epoch != cycleEpoch || !UserPreferences.shared.syncEnabled
+    }
+
     private func performSync(reason: String) async {
         guard UserPreferences.shared.syncEnabled else { status = .off; return }
         guard !isSyncing, !pushSuspended else { return }
@@ -289,11 +303,19 @@ final class SyncManager {
             status = .unavailable
             return
         }
-        guard let pass = await loadPassphrase() else {
+        let epoch = cycleEpoch
+        let loaded = await loadPassphrase()
+        // Bail out before `ensureFolder`, or turning sync off with "remove the
+        // cloud copy" would race this cycle into re-creating the folder it
+        // just sent to the Trash.
+        guard !cycleIsStale(epoch) else { return }
+        guard let pass = loaded else {
             status = .error(.keychainUnavailable)
             return
         }
-        guard await io.ensureFolder(Self.cloudFolder) else {
+        let folderReady = await io.ensureFolder(Self.cloudFolder)
+        guard !cycleIsStale(epoch) else { return }
+        guard folderReady else {
             status = .error(.io)
             return
         }
@@ -306,20 +328,23 @@ final class SyncManager {
         var failure: SyncErrorKind?
         var waiting = false
 
-        switch await syncSettings(passphrase: pass) {
+        switch await syncSettings(passphrase: pass, epoch: epoch) {
         case .ok:            break
         case .waiting:       waiting = true
         case .failed(let k): failure = k
+        case .cancelled:     return
         }
 
         if failure == nil, UserPreferences.shared.syncIncludePersonalization {
-            switch await syncSamples(passphrase: pass) {
+            switch await syncSamples(passphrase: pass, epoch: epoch) {
             case .ok:            break
             case .waiting:       waiting = true
             case .failed(let k): failure = k
+            case .cancelled:     return
             }
         }
 
+        guard !cycleIsStale(epoch) else { return }
         if let failure {
             if failure == .wrongPassphrase { pushSuspended = true }
             status = .error(failure)
@@ -341,11 +366,13 @@ final class SyncManager {
         case ok
         case waiting
         case failed(SyncErrorKind)
+        /// Sync was turned off (or the app is quitting) mid-cycle.
+        case cancelled
     }
 
     // MARK: Settings bundle
 
-    private func syncSettings(passphrase pass: String) async -> CycleResult {
+    private func syncSettings(passphrase pass: String, epoch: Int) async -> CycleResult {
         let url = Self.settingsURL
         var remoteItems: [SyncItem] = []
         var remoteExisted = false
@@ -358,6 +385,7 @@ final class SyncManager {
             remoteExisted = true
             remoteItems = p.items
         }
+        guard !cycleIsStale(epoch) else { return .cancelled }
 
         // iCloud leaves "… 2.qsync" behind when two Macs wrote at once.
         // Merge those in before they are moved to the Trash.
@@ -371,6 +399,10 @@ final class SyncManager {
                 mergedConflicts.append(copy)
             }
         }
+        // Last check before anything is written: from here to `writePayload`
+        // there is no other suspension point, so this one guard covers the
+        // local stores, the metadata and the cloud file.
+        guard !cycleIsStale(epoch) else { return .cancelled }
 
         let local = gatherSettings()
         let outcome = SyncMerge.merge(local: local, remote: remoteItems,
@@ -421,6 +453,13 @@ final class SyncManager {
             // never causes a push.
             var shared = profile
             shared.lastSeen = .distantPast
+            // So is `displayName`: it is this Mac's LaunchServices lookup, in
+            // this Mac's language, not a setting the user chose. Left in, two
+            // Macs disagree about the bytes ("Slack" vs the bundle id on a Mac
+            // that doesn't have it installed), the merge tie-breaks on length
+            // and the pair flip-flops forever. `applySyncItems` resolves a
+            // local name on the way back in.
+            shared.displayName = profile.key
             put(SyncKey.profile(profile.id), try? encoder.encode(shared))
         }
         for item in PersonalInfoStore.shared.items
@@ -537,10 +576,11 @@ final class SyncManager {
 
     // MARK: Writing samples
 
-    private func syncSamples(passphrase pass: String) async -> CycleResult {
+    private func syncSamples(passphrase pass: String, epoch: Int) async -> CycleResult {
         let store = PersonalizationStore.shared
         await store.loadIfNeeded()
         guard let samples = await store.syncSnapshot() else { return .ok }   // store unavailable
+        guard !cycleIsStale(epoch) else { return .cancelled }
 
         let url = Self.personalizationURL
         var remoteItems: [SyncItem] = []
@@ -553,6 +593,9 @@ final class SyncManager {
             remoteExisted = true
             remoteItems = p.items
         }
+        // Nothing below may write into the sample store or its metadata once
+        // the user has turned sync off.
+        guard !cycleIsStale(epoch) else { return .cancelled }
 
         let local = gatherSamples(samples)
         let outcome = SyncMerge.merge(local: local, remote: remoteItems,
@@ -584,6 +627,9 @@ final class SyncManager {
             }
             meta.isApplyingRemote = false
         }
+
+        // `applySyncSamples` above suspends, so re-check before the push.
+        guard !cycleIsStale(epoch) else { return .cancelled }
 
         let remoteDict = SyncMerge.dictionary(remoteItems)
         if outcome.merged != remoteDict || !remoteExisted {

@@ -48,7 +48,15 @@ final class WebDomainDetector {
             return cached.result
         }
         if let recent = lastWalk[key.pid], now - recent.at < Self.minWalkInterval {
-            return recent.result
+            // Reuse only a page-content verdict: that is the case the throttle
+            // exists for (web apps re-mount their inputs, so every keystroke is
+            // a new FieldKey for the SAME page). A chrome verdict belongs to a
+            // stable native control — the address/find bar always hits the 5 s
+            // element cache — and handing it to a DIFFERENT element would idle
+            // a real page field as an address bar and attribute the previous
+            // page's host to it. `.unknown` never idles and resolves no site
+            // profile.
+            return recent.result.isInWebArea == true ? recent.result : .unknown
         }
         let result = walk(from: element, role: role)
         lastWalk[key.pid] = (result, now)

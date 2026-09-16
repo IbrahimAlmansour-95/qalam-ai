@@ -78,6 +78,30 @@ actor PersonalizationStore {
     /// every request. Dropped whenever samples change.
     private var keywordCache: [String: Set<String>] = [:]
 
+    /// Set when uninstall starts: no write may re-create the folder that has
+    /// just gone to the Trash. Nonisolated and locked (the same shape as
+    /// `OllamaService.ShutdownFlag`) so the main actor can raise it
+    /// synchronously, before trashing — an `await`ed cancel would itself
+    /// queue behind the pending `saveNow()` on this actor.
+    final class WriteFlag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = false
+
+        func set() {
+            lock.lock(); defer { lock.unlock() }
+            value = true
+        }
+
+        var isSet: Bool {
+            lock.lock(); defer { lock.unlock() }
+            return value
+        }
+    }
+    private static let writesDisabled = WriteFlag()
+
+    /// Uninstall (removing data): stop every write, from any path.
+    nonisolated static func disableWrites() { writesDisabled.set() }
+
     private init() {}
 
     // MARK: - Paths
@@ -124,7 +148,17 @@ actor PersonalizationStore {
             return
         }
         self.key = key
-        if samplesExist { decodeSamples(at: samplesURL, key: key) }
+        if samplesExist, !decodeSamples(at: samplesURL, key: key) {
+            // The file is there but could not be read this session (an IO
+            // hiccup, a backup agent holding it, an ACL problem). Same rule as
+            // a key we can't get: nothing is written and nothing is moved to
+            // `.corrupt`, or the next recorded sample would replace thousands
+            // with one. The store stays closed and is retried in a minute.
+            self.key = nil
+            samples = []
+            markUnavailable()
+            return
+        }
         loaded = true
         publishSnapshot()
         QLog.info(.personalization, "store loaded (\(samples.count) samples)")
@@ -178,14 +212,18 @@ actor PersonalizationStore {
         return key
     }
 
-    private func decodeSamples(at url: URL, key: SymmetricKey) {
+    /// Returns false only when the file itself could not be read — a
+    /// transient failure the caller must not mistake for "nothing stored".
+    /// A file that reads but doesn't decrypt is a different case: that one is
+    /// moved aside and the store legitimately starts empty.
+    private func decodeSamples(at url: URL, key: SymmetricKey) -> Bool {
         guard let blob = try? Data(contentsOf: url) else {
             QLog.error(.personalization, "sample store unreadable (file error)")
-            return
+            return false
         }
         guard blob.count > Self.magic.count, blob.prefix(Self.magic.count) == Self.magic else {
             moveAside(url)
-            return
+            return true
         }
         do {
             let box = try AES.GCM.SealedBox(combined: Data(blob.dropFirst(Self.magic.count)))
@@ -198,6 +236,7 @@ actor PersonalizationStore {
             moveAside(url)
             samples = []
         }
+        return true
     }
 
     /// Keeps at most one unreadable copy next to the store.
@@ -227,6 +266,14 @@ actor PersonalizationStore {
     }
 
     func counts() -> [String: Int] {
+        // A store that exists on disk but was never opened this session
+        // (recording off AND strength off) would otherwise report zero on
+        // every counts-driven surface — an empty per-app list and a disabled
+        // per-app delete — while "Delete all" is enabled because
+        // `hasStoredData()` can see the file. Opening one whose file is
+        // already there can never mint a key: `resolveKey` returns nil rather
+        // than generating when `samplesExist`.
+        if !loaded, hasStoredData() { loadIfNeeded() }
         var out: [String: Int] = [:]
         for s in samples { out[s.bundleID, default: 0] += 1 }
         return out
@@ -301,7 +348,14 @@ actor PersonalizationStore {
             samples.removeAll { drop.contains($0.id) }
             changed = samples.count != before
         }
-        let atCapacity = samples.count >= Self.maxSamples
+        // "Full" has to mean either cap, because `prune()` enforces both. The
+        // byte cap bites well below `maxSamples` for Arabic (≈2 bytes per
+        // character), and a count-only test would let every sample this Mac
+        // has already pruned come back on every single cycle — re-sorted,
+        // re-pruned to the same set, caches wiped and the whole 5 MB file
+        // re-encrypted each time.
+        let used = samples.reduce(0) { $0 + $1.text.utf8.count + Self.perSampleOverhead }
+        let atCapacity = samples.count >= Self.maxSamples || used >= Self.maxBytes
         let oldest = samples.map(\.date).min() ?? .distantPast
         var known = Set(samples.map(\.id))
         for sample in upserts {
@@ -347,8 +401,36 @@ actor PersonalizationStore {
         }
     }
 
+    /// Quit / uninstall-keeping-data: write the debounced sample now instead
+    /// of losing it. Nothing pending → nothing written (and no directory
+    /// created).
+    func flushPendingSave() {
+        guard saveTask != nil else { return }
+        saveTask?.cancel()
+        saveNow()
+    }
+
+    /// Bounded blocking bridge for the synchronous main-actor termination
+    /// paths. The store is a plain actor (no main-actor hop anywhere in
+    /// `flushPendingSave`/`saveNow` — `delete`/`deleteAll` only *spawn* a
+    /// `Task { @MainActor }` without awaiting it), so this cannot deadlock;
+    /// the timeout covers the actor being mid-`loadIfNeeded` on a slow
+    /// keychain read.
+    nonisolated static func flushPendingSaveBlocking(timeout: TimeInterval = 1.0) {
+        let sem = DispatchSemaphore(value: 0)
+        Task.detached(priority: .userInitiated) {
+            await PersonalizationStore.shared.flushPendingSave()
+            sem.signal()
+        }
+        _ = sem.wait(timeout: .now() + timeout)
+    }
+
     private func saveNow() {
         saveTask = nil
+        // Uninstall in progress: `saveNow()` creates the 0700 Personalization
+        // directory itself, so a late write would restore the encrypted store
+        // the uninstaller just trashed — with its key already deleted.
+        guard !Self.writesDisabled.isSet else { return }
         guard let key, let dir = Self.directory, let url = Self.samplesURL else { return }
         do {
             let json = try JSONEncoder().encode(StoreFile(version: 1, samples: samples))

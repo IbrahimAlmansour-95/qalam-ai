@@ -19,6 +19,13 @@ final class AlternativesProvider {
     /// Text before the caret when the list was opened. If the user types on,
     /// the list no longer describes what's on screen and is closed.
     private var contextText = ""
+    /// The same moment as seen by the ACCESSIBILITY MONITOR — what
+    /// `revalidate()` compares against. It is deliberately not the engine's
+    /// copy: a click into an empty, too-short or otherwise idle field never
+    /// reaches `SuggestionEngine.handle(context:)`, so the engine would still
+    /// be describing the field the list was opened over.
+    private var openField: FieldKey?
+    private var openText = ""
     private var anchor: AlternativesPanel.Anchor?
 
     static let maxOptions = 5
@@ -44,6 +51,14 @@ final class AlternativesProvider {
         task?.cancel()
         self.anchor = anchor
         contextText = before
+        // Remember the field the way the monitor sees it, so `revalidate()`
+        // compares like with like. If the monitor has nothing readable right
+        // now, fall back to the engine's copy rather than record a blank that
+        // the next read would always disagree with.
+        let live = AccessibilityMonitor.shared.currentContext
+        let opened = live == .empty ? context : live
+        openField = opened.fieldKey
+        openText = opened.textBeforeCursor
         // Seed with the word the ghost is already offering, so option 1 is
         // never empty and the list is useful before the model answers.
         options = Self.seedOptions(from: SuggestionEngine.shared.currentSuggestion)
@@ -89,14 +104,27 @@ final class AlternativesProvider {
         isLoading = false
         anchor = nil
         contextText = ""
+        openField = nil
+        openText = ""
         AlternativesPanel.shared.hide()
     }
 
     /// Called from the overlay loop while the list is up: the user moved on
     /// (clicked elsewhere, focus changed) → the list is stale.
+    ///
+    /// No keystroke re-reads the field while the list is open — every key is
+    /// either taken by the list or closes it — so the caller re-reads it on
+    /// its own cadence before calling this. Compared against the monitor, not
+    /// the engine: a click into an idle field leaves the engine's copy
+    /// unchanged, which would keep the list alive over the wrong caret.
     func revalidate() {
         guard AlternativesPanel.shared.isVisible else { return }
-        if SuggestionEngine.shared.lastContextForAlternatives.textBeforeCursor != contextText {
+        let live = AccessibilityMonitor.shared.currentContext
+        // An unreadable field (AX hiccup, Secure Input, a backed-off app) is
+        // not evidence that the user moved: keep the list rather than close
+        // it on a blind read.
+        guard live != .empty else { return }
+        if live.fieldKey != openField || live.textBeforeCursor != openText {
             close()
         }
     }
@@ -109,6 +137,15 @@ final class AlternativesProvider {
         let slot = index - 1
         guard slot >= 0, slot < options.count else { return }
         let option = options[slot]
+        // Last line of defence against the field having changed since the
+        // list was drawn. This runs after the event-tap callback has already
+        // returned, so an AX read is allowed here. An unreadable field is not
+        // treated as a move — only a field that reads back as a different one.
+        let live = AccessibilityMonitor.shared.snapshot()
+        if live != .empty, live.fieldKey != openField || live.textBeforeCursor != openText {
+            close()
+            return
+        }
         close()
         TextInjector.shared.injectWord(option,
                                        withTrailingSpace: UserPreferences.shared.spaceAfterAccept)

@@ -212,9 +212,19 @@ final class ProfileStore {
             var p = incoming
             if let i = profiles.firstIndex(where: { $0.id == incoming.id }) {
                 p.lastSeen = profiles[i].lastSeen
+                // `displayName` is local bookkeeping too — this Mac's
+                // localized name for the app. The cloud copy carries the bare
+                // key, so keeping ours is what stops the Apps tab showing a
+                // raw bundle id (or the other Mac's language).
+                p.displayName = profiles[i].displayName
                 profiles[i] = p
             } else {
                 p.lastSeen = .distantPast
+                if p.kind == .app {
+                    p.displayName = Self.appDisplayName(bundleID: p.key) ?? p.key
+                } else {
+                    p.displayName = p.key
+                }
                 profiles.append(p)
             }
         }

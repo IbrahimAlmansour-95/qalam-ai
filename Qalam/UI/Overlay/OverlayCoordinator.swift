@@ -92,6 +92,8 @@ final class OverlayCoordinator {
     private static let mirrorNilSamplesToHide = 2
     /// Ticks between field-button evaluations (≈240 ms).
     private static let fieldButtonEveryTicks = 4
+    /// Ticks between field re-reads while the alternatives list is up (≈240 ms).
+    private static let listRevalidateEveryTicks = 4
     /// Longest "typo → fix" the ghost shows before falling back to the fix
     /// alone (a long sentence rewrite would cover the user's own text).
     private static let arrowMaxChars = 60
@@ -170,6 +172,17 @@ final class OverlayCoordinator {
             }
             listSuppressed = true
             FieldButtonPanel.shared.hide()
+            // The list is the only surface up, and every keystroke either
+            // feeds it or closes it — so nothing else re-reads the field
+            // while it is open. Sample it here, or a click into another
+            // field would leave the list live over the wrong caret and its
+            // keys would insert there. `snapshot()` already skips Secure
+            // Input and a backed-off app, and only yields when the context
+            // actually changed, so a still caret costs one AX read per tick
+            // window.
+            if tickCount % Self.listRevalidateEveryTicks == 0 {
+                AccessibilityMonitor.shared.pump()
+            }
             AlternativesProvider.shared.revalidate()
             return
         }
@@ -270,12 +283,20 @@ final class OverlayCoordinator {
         if ProfileStore.shared.activeResolved.displayMode == .mirror {
             let field = AXGuard.measure(pid: pid) { AccessibilityMonitor.shared.focusedFrame() }
             if let field {
+                nilCaretStreak = 0
                 showMirror(text: text, hint: hint, field: field, isRTL: textRTL)
             } else {
+                nilCaretStreak += 1
                 hideSurfaces()
                 presentation = .none
                 lastCaret = nil
                 lastField = nil
+                // One more sample next tick, the same bound the caret path
+                // uses: streaming has already ended by the time the final
+                // text is rendered, so a single missed field read would
+                // otherwise drop the suggestion for good (`lastText` is
+                // already the new text, so no later tick re-renders it).
+                if nilCaretStreak < Self.mirrorNilSamples { recheckNextTick = true }
             }
             return
         }

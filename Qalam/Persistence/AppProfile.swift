@@ -186,14 +186,16 @@ enum KnownApps {
         "co.zeit.hyper", "org.tabby", "com.mitchellh.ghostty",
     ]
 
-    /// Code editors whose default key bindings collide with our global
-    /// shortcuts (⌃` toggles the terminal, ⇧⌘Space = parameter hints in VS
-    /// Code) and which switch into "screen reader optimized" mode when
+    /// Editors whose default key bindings collide with BOTH of our global
+    /// shortcuts (⌃` toggles the terminal / the console, ⇧⌘Space = parameter
+    /// hints in VS Code and "expand selection to scope" in Sublime Text).
+    /// The Electron ones also switch into "screen reader optimized" mode when
     /// AXManualAccessibility is set. Suggestions are NOT idled here.
     static let shortcutReservedEditors: Set<String> = [
         "com.microsoft.VSCode", "com.microsoft.VSCodeInsiders", "com.vscodium",
         "com.visualstudio.code.oss", "com.todesktop.230313mzl4w4u92",
         "com.exafunction.windsurf", "dev.zed.Zed", "dev.zed.Zed-Preview",
+        "com.sublimetext.4", "com.sublimetext.3", "com.sublimetext.2",
     ]
 
     static func isBrowser(_ id: String?) -> Bool {
@@ -209,5 +211,22 @@ enum KnownApps {
     static func isShortcutReservedEditor(_ id: String?) -> Bool {
         guard let id else { return false }
         return shortcutReservedEditors.contains(id)
+    }
+
+    /// Apps that ⌃ + the key above Tab is left to. A superset of
+    /// `shortcutReservedEditors`: the JetBrains IDEs bind ⌃` to "Quick Switch
+    /// Scheme" in the stock macOS keymap, but they do not bind ⇧⌘Space, so
+    /// only the "Suggest now" shortcut defers to them — global pause keeps
+    /// working there. Suggestions are NOT idled in any of these; a user who
+    /// wants ⌃` back as the request key sets that app to "Force only".
+    ///
+    /// Prefix matches so the `.ce`, EAP and Toolbox variants are covered
+    /// without another edit (com.jetbrains.intellij, .pycharm, .WebStorm,
+    /// .PhpStorm, .goland, .CLion, .rider, .rubymine, .datagrip, .fleet …).
+    static func isForceShortcutReserved(_ id: String?) -> Bool {
+        guard let id else { return false }
+        return isShortcutReservedEditor(id)
+            || id.hasPrefix("com.jetbrains.")
+            || id.hasPrefix("com.google.android.studio")
     }
 }

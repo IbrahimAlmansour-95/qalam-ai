@@ -1203,8 +1203,8 @@ enum Translations {
             .arabic:  "يطلب اقتراحاً في الحقل الحالي فوراً — بما في ذلك مربعات البحث والحقول الضيقة والتطبيقات المضبوطة على «عند الطلب فقط». لا يعمل أبداً في حقول كلمات المرور أو التطبيقات المتوقفة."
         ],
         .shortcutForceEditorsHelp: [
-            .english: "In VS Code, Cursor, Windsurf and Zed this key keeps toggling the editor's terminal, unless you set that editor to Force only in the Apps tab.",
-            .arabic:  "في VS Code وCursor وWindsurf وZed يظل هذا المفتاح يفتح طرفية المحرّر، إلا إذا ضبطت المحرّر على «عند الطلب فقط» في تبويب «التطبيقات»."
+            .english: "In VS Code, Cursor, Windsurf, Zed, Sublime Text and the JetBrains IDEs this key keeps its editor meaning, unless you set that editor to Force only in the Apps tab.",
+            .arabic:  "في VS Code وCursor وWindsurf وZed وSublime Text وبيئات JetBrains يحتفظ هذا المفتاح بوظيفته في المحرّر، إلا إذا ضبطت المحرّر على «عند الطلب فقط» في تبويب «التطبيقات»."
         ],
         .shortcutAppToggle: [
             .english: "Pause in this app for 10 minutes",
@@ -1220,8 +1220,8 @@ enum Translations {
             .arabic:  "حدّد نصاً ثم اختر النبرة: رسمي أو ودّي أو موجز…"
         ],
         .shortcutEditorsPassHelp: [
-            .english: "In VS Code, Cursor, Windsurf and Zed these keys keep their editor meaning.",
-            .arabic:  "في VS Code وCursor وWindsurf وZed تحتفظ هذه المفاتيح بوظيفتها في المحرّر."
+            .english: "In VS Code, Cursor, Windsurf, Zed and Sublime Text these keys keep their editor meaning.",
+            .arabic:  "في VS Code وCursor وWindsurf وZed وSublime Text تحتفظ هذه المفاتيح بوظيفتها في المحرّر."
         ],
         .shortcutKeyAboveTab: [ .english: "key above Tab", .arabic: "المفتاح فوق Tab" ],
         .shortcutKeyAboveTabHelp: [
@@ -1348,8 +1348,8 @@ enum Translations {
             .arabic:  "سيُحذف كل ما تعلّمه QalamAI من كتابتك من هذا الماك. لا يمكن التراجع عن ذلك."
         ],
         .personaPrivacy: [
-            .english: "Stored encrypted (AES-GCM) in your Application Support folder, with the key in your login keychain. Nothing is uploaded, and none of it appears in logs or diagnostics.",
-            .arabic:  "يُحفظ مشفَّراً (AES-GCM) في مجلد Application Support، ويُحفظ المفتاح في سلسلة مفاتيح تسجيل الدخول. لا يُرفع أي شيء ولا يظهر منه شيء في السجلات أو التشخيص."
+            .english: "Stored encrypted (AES-GCM) in your Application Support folder, with the key in your login keychain — or in a protected file on this Mac if the keychain refuses it. Nothing is uploaded, and none of it appears in logs or diagnostics.",
+            .arabic:  "يُحفظ مشفَّراً (AES-GCM) في مجلد Application Support، ويُحفظ المفتاح في سلسلة مفاتيح تسجيل الدخول، أو في ملف محمي على هذا الماك إذا تعذّر ذلك. لا يُرفع أي شيء ولا يظهر منه شيء في السجلات أو التشخيص."
         ],
         .personaUnavailable: [
             .english: "The encryption key couldn't be read from your keychain, so saved writing is unavailable in this session. Nothing was deleted; unlock your login keychain and reopen QalamAI.",
@@ -1598,8 +1598,8 @@ enum Translations {
             .arabic:  "لا تتم مزامنة: لقطات الشاشة، والنص المقروء من الشاشة، والحافظة، والسجلات، وإحصاءات الاستخدام، والنماذج المُنزّلة."
         ],
         .syncEncryptionNote: [
-            .english: "Encrypted on this Mac with AES-GCM and a key derived from your passphrase (PBKDF2-SHA256, 310,000 rounds). iCloud Drive only ever holds the encrypted file, and the passphrase stays in this Mac’s login keychain.",
-            .arabic:  "يُشفّر على هذا الجهاز بـ AES-GCM بمفتاح مشتقّ من عبارة المرور (PBKDF2-SHA256، 310,000 دورة). لا يحتفظ iCloud Drive إلا بالملف المشفّر، وتبقى عبارة المرور في سلسلة مفاتيح الدخول على هذا الجهاز."
+            .english: "Encrypted on this Mac with AES-GCM and a key derived from your passphrase (PBKDF2-SHA256, 310,000 rounds). iCloud Drive only ever holds the encrypted file, and the passphrase stays on this Mac — in your login keychain, or in a protected file if the keychain refuses it.",
+            .arabic:  "يُشفّر على هذا الجهاز بـ AES-GCM بمفتاح مشتقّ من عبارة المرور (PBKDF2-SHA256، 310,000 دورة). لا يحتفظ iCloud Drive إلا بالملف المشفّر، وتبقى عبارة المرور على هذا الجهاز — في سلسلة مفاتيح الدخول، أو في ملف محمي إذا تعذّر ذلك."
         ],
         // ━━━ v1.4 T9 integration polish ━━━
         .popoverStatusSnoozed: [

@@ -110,8 +110,12 @@ actor SyncFileIO {
         }
 
         guard let result else {
+            // Not "still downloading" — the download state was checked above.
+            // A coordinated read that overruns 30 s means the sink is wedged,
+            // and reporting it as `.io` keeps the UI from showing "waiting for
+            // download" forever while nothing can run.
             QLog.notice(.sync, "reading the cloud copy timed out")
-            return .notDownloaded
+            return .failure(.io)
         }
         guard let blob = result.data else {
             // "not downloaded yet" also surfaces as a Cocoa read error.
@@ -230,16 +234,40 @@ actor SyncFileIO {
         let failed: Bool
     }
 
+    /// Deadline (uptime) of every block still on the work queue, by run id.
+    /// The queue is deliberately serial — that is what stops an abandoned
+    /// write from landing on top of a newer one — so a block that outlived
+    /// its own timeout also blocks every later one: they can never start and
+    /// could only return nil after burning their full 30 / 60 s each. Once
+    /// one entry is past its deadline we stop enqueuing behind it and fail
+    /// immediately instead.
+    private var outstandingDeadlines: [Int: TimeInterval] = [:]
+    private var nextRunID = 0
+
+    private func runFinished(_ id: Int) {
+        outstandingDeadlines[id] = nil
+    }
+
     /// Runs `body` on a private queue and waits at most `timeout` seconds.
-    /// nil = it is still running (the thread is left to finish on its own —
-    /// file coordination can't be cancelled).
+    /// nil = it timed out and is still running (the thread is left to finish
+    /// on its own — file coordination can't be cancelled), or an earlier block
+    /// is already wedged and nothing new can get through.
     private func run<T: Sendable>(timeout: TimeInterval,
                                   _ body: @escaping @Sendable () -> T) async -> T? {
-        await withCheckedContinuation { (continuation: CheckedContinuation<T?, Never>) in
+        let now = ProcessInfo.processInfo.systemUptime
+        guard !outstandingDeadlines.values.contains(where: { $0 <= now }) else {
+            QLog.notice(.sync, "sync IO is wedged — skipping this file access")
+            return nil
+        }
+        let id = nextRunID
+        nextRunID &+= 1
+        outstandingDeadlines[id] = now + timeout
+        return await withCheckedContinuation { (continuation: CheckedContinuation<T?, Never>) in
             let box = ResumeOnce<T>(continuation)
             Self.workQueue.async {
                 let value = body()
                 box.finish(value)
+                Task { await self.runFinished(id) }
             }
             // A separate queue: the timer must not wait behind the work it
             // is timing.
