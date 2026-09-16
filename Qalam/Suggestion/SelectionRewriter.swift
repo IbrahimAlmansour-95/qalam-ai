@@ -85,7 +85,13 @@ final class SelectionRewriter {
             cancel()
             return
         }
-        guard let (element, text) = readSelection(),
+        // Frontmost app is hung / too slow for AX right now — don't block on it.
+        let pid = AXGuard.frontmostPID()
+        guard !AXGuard.isBackedOff(pid) else {
+            NSSound.beep()
+            return
+        }
+        guard let (element, text) = AXGuard.measure(pid: pid, { readSelection() }),
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               text.count <= 4000
         else {
@@ -95,7 +101,7 @@ final class SelectionRewriter {
         capturedElement = element
         capturedText = text
         state = .idle
-        let anchor = AccessibilityMonitor.shared.caretFrame()
+        let anchor = AXGuard.measure(pid: pid) { AccessibilityMonitor.shared.caretFrame() }
         ToneRewritePanel.shared.show(near: anchor)
     }
 
@@ -116,7 +122,11 @@ final class SelectionRewriter {
                 state = .idle
                 ToneRewritePanel.shared.hide()
             } catch {
-                state = .failed(error.localizedDescription)
+                // Never echo the selected text; the timeout gets a localized
+                // message (errorDescription is English, for logs).
+                state = .failed(error is LLMTimeoutError
+                                ? L.t(.rewriteTimedOut)
+                                : error.localizedDescription)
             }
         }
     }
@@ -148,7 +158,8 @@ final class SelectionRewriter {
             model: UserPreferences.shared.activeModelTag,
             maxTokens: maxTokens,
             temperature: 0.4,
-            stop: ["\n\n\n"]
+            stop: ["\n\n\n"],
+            deadline: LLMDeadline.rewrite
         ) {
             assembled += token
         }
@@ -176,8 +187,21 @@ final class SelectionRewriter {
     }
 
     private func replaceSelection(in element: AXUIElement, with text: String) {
-        let err = AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, text as CFString)
-        if err != .success {
+        let pid = AXGuard.frontmostPID()
+        guard !AXGuard.isBackedOff(pid) else {
+            // App is unresponsive to AX — type over the selection instead.
+            TextInjector.shared.injectWord(text, withTrailingSpace: false)
+            return
+        }
+        let started = ProcessInfo.processInfo.systemUptime
+        let err = AXGuard.measure(pid: pid) {
+            AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, text as CFString)
+        }
+        // A set that ran into the messaging timeout was most likely delivered
+        // and will still apply; typing it as well would duplicate the text.
+        let timedOut = err == .cannotComplete &&
+            ProcessInfo.processInfo.systemUptime - started >= Double(AXGuard.messagingTimeout) * 0.9
+        if err != .success && !timedOut {
             // Fallback: type over the current selection.
             TextInjector.shared.injectWord(text, withTrailingSpace: false)
         }

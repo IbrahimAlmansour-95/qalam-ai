@@ -1,7 +1,58 @@
 # Changelog
 
-<<<<<<< Updated upstream
-=======
+## 1.4.0 — 2026-09-16
+
+The big stability + capability release. Everything below is off by default unless it says otherwise, and nothing changes how the ghost is placed inline or what Tab, Shift+Tab and Esc already do.
+
+### Stability
+
+- **A frozen app can no longer freeze QalamAI.** Every Accessibility call now gives up after 0.5s, and an app that keeps answering slowly is skipped for a few seconds instead of stalling your typing.
+- **Accepting a suggestion no longer runs Accessibility work inside the key handler** — the keypress is decided instantly and the insertion happens right after, which removes a class of input hangs.
+- **The local engine restarts itself** if it dies (after 1, 2, 4, 8s; it reports a clear failure after 5 crashes in 5 minutes) and re-warms your model. The menu bar shows "Restarting engine…" while it happens.
+- **Every model request now has a deadline**, so a wedged request can't leave a stale ghost behind.
+- **Suggestions pause while macOS Secure Input is on** (password managers, Terminal's secure entry) and the menu bar says so.
+- **Two copies of QalamAI can no longer run at once**, which used to double-insert accepted text.
+- **The trigger-delay slider actually works now** — it was previously ignored.
+- **Switching models preloads the new one**, so the first suggestion isn't slow.
+- **Local logs and crash diagnostics** in `~/Library/Logs/QalamAI` (never your text) for real bug reports. No telemetry — nothing is sent anywhere.
+- **Fixed text offset bugs** that could mangle corrections around emoji, Arabic harakat, and long sentences (e.g. `Hello. teh` correcting to `Hello.theh`).
+- **The ghost follows the caret when you scroll or move a window**, instead of lingering in the wrong place.
+
+### Per-app and per-website control
+
+- **New Apps settings tab.** Per app — and per website in browsers — you can set: on / off / only when forced, inline or mirror display, whether Tab accepts, custom AI instructions, writing mode, language, and whether writing is recorded. Your existing excluded apps carry over automatically.
+- **Custom AI instructions** (a short note about you) are included in every suggestion; per-app and per-site notes are added on top.
+- **Improve compatibility with Electron apps** (per app) for apps that don't expose their text properly.
+
+### Shortcuts and activation
+
+- **⌘⇧Space** pauses and resumes suggestions everywhere.
+- **⌃`** forces a suggestion in a field where QalamAI stays quiet.
+- **⌃⌥⌘`** turns the current app off for 10 minutes.
+- **⌥Tab** types a real Tab while a suggestion is showing.
+- Each shortcut can be switched off, and they're left alone inside VS Code, Cursor, Windsurf, Zed, JetBrains IDEs and Sublime Text, where they already mean something.
+- **QalamAI now stays quiet in search boxes, address bars, comboboxes and tiny fields** unless you force it. Terminals and editors stay fully active, as before.
+
+### Suggestions
+
+- **Word alternatives** — press ⌥\ for a numbered list of other words; 1–5 picks one.
+- **Mirror bubble**: when an app won't report the cursor position, the suggestion appears in a small bubble above the field instead of vanishing. You can also force it per app — **this is the fix for Arabic in Telegram** (set Telegram's display to Mirror).
+- **Optional button next to text fields** for quick per-app control (off by default).
+- **Suggestion length** (short / medium / long) and **mid-line completion** are now explicit settings.
+- **Optionally accept a whole suggestion with the key above Tab** (off by default — on the Arabic layout that key types ذ).
+- Typo fixes can show as `typo → fix`. Corrections are still applied with the accept key; nothing is ever rewritten behind your back.
+
+### Personalization and sync (both off by default)
+
+- **Learn from your writing.** When enabled, QalamAI records what you type (either only where you accepted a suggestion, or everything) and nudges suggestions toward your vocabulary, with an Off → Strong strength slider. Stored encrypted on your Mac with the key in your keychain. Password fields, short text, and anything that looks like a card number, email or URL are never recorded. You can see counts per app and delete per app or all at once.
+- **Sync between Macs through iCloud Drive**, encrypted with a passphrase you choose: snippets, writing modes, app and site settings, instructions, My Info, and optionally your writing samples. Deletions are respected, so nothing you delete comes back.
+
+### Also
+
+- Uninstall removes every new location (logs, personalization store, sync folder, keychain items) to the Trash.
+- Every new screen and message is in both English and Arabic.
+- Build tooling can now use Xcode's compiler directly when `xcrun` is blocked by an unaccepted Xcode license.
+
 ## 1.3.11 — 2026-05-31
 
 - **Fixed the onboarding window drifting/"floating".** The Welcome/Get Started window could be dragged by clicking anywhere on its background, so it moved around while you tried to press buttons. It now stays put (still movable by its title bar).
@@ -11,7 +62,6 @@
 - **Restored stable inline placement.** The v1.3.9 attempt to keep the ghost on-field in apps that misreport the caret (clamp, then fit-or-hide) regressed the apps that worked — it could overlap text or stop showing Arabic in Notes. Reverted to the proven placement: Arabic works in Notes and other well-behaved fields, English everywhere, plus the Terminal/Chromium caret fixes.
 - Known limitation: **Telegram reports the Arabic (RTL) caret incorrectly** (pinned to the box edge), so inline suggestions there can be mispositioned. This is a Telegram Accessibility issue we can't correct without breaking other apps; left as-is by design.
 
->>>>>>> Stashed changes
 ## 1.3.9 — 2026-05-31
 
 - **Ghost can no longer fly off the text field.** Some apps misreport the caret — e.g. Telegram pins the Arabic (RTL) caret to the box's left edge — which threw the suggestion far outside the field. The ghost is now clamped to stay within the focused field's bounds. (No effect on apps that report the caret correctly.)

@@ -8,6 +8,7 @@ final class MenuBarController {
 
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
+    private var appearanceTimer: Timer?
 
     private init() {}
 
@@ -54,20 +55,46 @@ final class MenuBarController {
             button.action = #selector(togglePopover(_:))
         }
         statusItem = item
+        refreshStatusAppearance()
+        // The icon dims whenever suggestions are off — globally, while
+        // snoozed, during Secure Input, or in an app paused for a while.
+        // Cheap in-memory reads; once a second is enough.
+        appearanceTimer?.invalidate()
+        appearanceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            Task { @MainActor in MenuBarController.shared.refreshStatusAppearance() }
+        }
 
         let pop = NSPopover()
         pop.behavior = .transient
-        pop.contentSize = NSSize(width: 320, height: 420)
-        pop.contentViewController = NSHostingController(rootView: MenuBarPopoverView())
+        let host = NSHostingController(rootView: MenuBarPopoverView())
+        // The popover grew banners in v1.4 (Secure Input, engine failed, the
+        // per-app section, an update). A fixed height clipped them; let the
+        // content decide instead. The view still pins its own width.
+        host.sizingOptions = [.preferredContentSize]
+        pop.contentViewController = host
         popover = pop
     }
 
     func uninstall() {
+        appearanceTimer?.invalidate()
+        appearanceTimer = nil
         if let item = statusItem {
             NSStatusBar.system.removeStatusItem(item)
         }
         statusItem = nil
         popover = nil
+    }
+
+    /// Dims the menu bar icon while nothing would be suggested. Called on a
+    /// timer and right after a shortcut changes one of these.
+    func refreshStatusAppearance() {
+        guard let button = statusItem?.button else { return }
+        let prefs = UserPreferences.shared
+        let pausedApp = TemporaryPauseStore.shared
+            .until(bundleID: ProfileStore.shared.lastExternalApp?.bundleID) != nil
+        let dimmed = !prefs.isEnabled || prefs.isSnoozed
+            || SecureInputMonitor.shared.isActive || pausedApp
+        if button.appearsDisabled != dimmed { button.appearsDisabled = dimmed }
     }
 
     @objc private func togglePopover(_ sender: Any?) {

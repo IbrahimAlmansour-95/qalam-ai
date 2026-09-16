@@ -149,7 +149,6 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     case generalMaxWordsValue        // "{n} words"
     case generalMaxWordsModelCap     // "Model max: {n}"
     case generalExcludedApps
-    case generalExcludedAppsHelp
     // Engine + context
     case generalEngine
     case generalEngineHelp
@@ -164,7 +163,6 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     case ctxScreen
     case ctxScreenHelp
     case ctxScreenGrant
-    case generalAddApp
     // Modes tab
     case modesHeading
     case modesBuiltIn
@@ -193,7 +191,6 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     case shortcutsHeading
     case shortcutsSubheading
     case shortcutAcceptWord
-    case shortcutAcceptLine
     case shortcutDismiss
     case shortcutPauseResume
     case shortcutPauseHelp
@@ -289,6 +286,224 @@ enum LocalizationKey: String, CaseIterable, Sendable {
     case rewriteToneConcise
     case rewriteToneExpand
     case rewriteToneGrammar
+    // ━━━ v1.4 T1 stability ━━━
+    case popoverSecureInputPaused
+    case popoverSecureInputHelp
+    case popoverStatusRestarting
+    case popoverStatusEngineFailed
+    case popoverEngineFailedHelp
+    case popoverEngineRetry
+    case rewriteTimedOut
+    // ━━━ v1.4 T2 diagnostics ━━━
+    case diagShowLogs
+    // ━━━ v1.4 T3 apps & profiles ━━━
+    case tabApps
+    case appsHeading
+    case appsSubheading
+    case appsAddFrontmostFmt
+    case appsAddFrontmost
+    case appsAddRunning
+    case appsAddWebsite
+    case appsWebsitePlaceholder
+    case appsWebsiteInvalid
+    case appsAddHelp
+    case appsConfigured
+    case appsConfiguredEmpty
+    case appsRecent
+    case appsRecentEmpty
+    case appsShowAllFmt
+    case appsShowFewer
+    case appsRecentSitesHelp
+    case appsWebsite
+    case appsCustomized
+    case appsSelectPrompt
+    case appsActivation
+    case appsActivationInherit
+    case appsActivationAlwaysOn
+    case appsActivationForceOnly
+    case appsActivationOff
+    case appsActivationHelp
+    case appsWritingMode
+    case appsInherit
+    case appsInheritValueFmt
+    case appsLanguage
+    case appsLanguageAuto
+    case appsLanguageEnglish
+    case appsLanguageArabic
+    case appsLanguageHelp
+    case appsAutocorrect
+    case appsAutocorrectHelp
+    case appsOn
+    case appsOff
+    case appsInstructions
+    case appsInstructionsHelp
+    case appsInstructionsPlaceholder
+    case appsReset
+    case appsRemove
+    case appsOpen
+    case appsManageHint
+    case myInfoInstructionsTitle
+    case myInfoInstructionsHelp
+    case myInfoInstructionsPlaceholder
+    case popoverSuggestInAppFmt
+    case popoverSuggestOnSiteFmt
+    case popoverAppPausedFmt
+    // ━━━ v1.4 T4 shortcuts & activation ━━━
+    case shortcutCardVisible
+    case shortcutCardAnywhere
+    case shortcutCardEsc
+    case shortcutAcceptWordHelp
+    case shortcutTabPassNote
+    case shortcutAcceptAll
+    case shortcutAcceptAllHelp
+    case shortcutRealTab
+    case shortcutRealTabHelp
+    case shortcutDismissHelp
+    case shortcutRegenerate
+    case shortcutRegenerateHelp
+    case shortcutForceActivate
+    case shortcutForceActivateHelp
+    case shortcutForceEditorsHelp
+    case shortcutAppToggle
+    case shortcutAppToggleHelp
+    case shortcutRewrite
+    case shortcutRewriteHelp
+    case shortcutEditorsPassHelp
+    case shortcutKeyAboveTab
+    case shortcutKeyAboveTabHelp
+    case shortcutEscDismiss
+    case shortcutEscDismissPause
+    case shortcutEscPass
+    case shortcutEscHelp
+    case toastPaused
+    case toastResumed
+    case toastPausedAppFmt
+    case toastResumedAppFmt
+    case toastNoField
+    case toastForceBlocked
+    case appsTabAccept
+    case appsTabAcceptOn
+    case appsTabAcceptOff
+    case appsTabAcceptHelp
+
+    // ━━━ v1.4 T5 mirror bubble, compatibility, field button ━━━
+    case appsDisplay
+    case appsDisplayInline
+    case appsDisplayMirror
+    case appsDisplayHelp
+    case appsCompat
+    case appsCompatElectron
+    case appsCompatHelp
+    case generalDisplay
+    case generalCaretUnavailable
+    case generalCaretUnavailableBubble
+    case generalCaretUnavailableHide
+    case generalCaretUnavailableHelp
+    case generalFieldButton
+    case generalFieldButtonHelp
+    case fieldButtonDisableFmt
+    case fieldButtonEnableFmt
+    case fieldButtonPause10
+    case fieldButtonSettings
+
+    // ━━━ v1.4 T6 personalization ━━━
+    case tabPersonalization
+    case personaHeading
+    case personaSubheading
+    case personaRecord
+    case personaRecordHelp
+    case personaMode
+    case personaModeAccepted
+    case personaModeEverything
+    case personaModeHelp
+    case personaStrength
+    case personaStrengthOff
+    case personaStrengthLow
+    case personaStrengthMedium
+    case personaStrengthStrong
+    case personaStrengthHelp
+    case personaSamples
+    case personaSamplesHelp
+    case personaSamplesEmpty
+    case personaSampleCountFmt
+    case personaDelete
+    case personaDeleteAll
+    case personaDeleteAllTitle
+    case personaDeleteAllConfirm
+    case personaPrivacy
+    case personaUnavailable
+    case appsRecord
+    case appsRecordHelp
+    case appsRecordSamplesFmt
+    case appsRecordDelete
+
+    // ━━━ v1.4 T7 suggestion features ━━━
+    case generalCompletionShort
+    case generalCompletionMedium
+    case generalCompletionLong
+    case generalCompletionLengthHelp
+    case generalCompletionLongUnavailable
+    case generalMidLine
+    case generalMidLineHelp
+    case generalAlternativesAutoShow
+    case generalAlternativesAutoShowHelp
+    case generalAutocorrectStyle
+    case generalAutocorrectStyleInline
+    case generalAutocorrectStyleArrow
+    case generalAutocorrectStyleHelp
+    case shortcutAcceptAllAboveTab
+    case shortcutAcceptAllAboveTabHelp
+    case shortcutAlternatives
+    case shortcutAlternativesHelp
+    case shortcutInsertAlternative
+    case shortcutInsertAlternativeHelp
+    case alternativesLoading
+
+    // ━━━ v1.4 T8 encrypted iCloud Drive sync ━━━
+    case tabSync
+    case syncHeading
+    case syncSubheading
+    case syncUnavailable
+    case syncTurnOnTitle
+    case syncTurnOn
+    case syncPassphrase
+    case syncPassphraseConfirm
+    case syncPassphraseHelp
+    case syncPassphraseTooShort
+    case syncPassphraseMismatch
+    case syncReenterTitle
+    case syncReenterHelp
+    case syncSavePassphrase
+    case syncStatus
+    case syncStatusOff
+    case syncStatusIdle
+    case syncStatusSyncing
+    case syncStatusWaiting
+    case syncErrorWrongPassphrase
+    case syncErrorKeychain
+    case syncErrorIO
+    case syncErrorFormat
+    case syncLastSync
+    case syncNever
+    case syncNow
+    case syncTurnOff
+    case syncTurnOffTitle
+    case syncTurnOffMessage
+    case syncTurnOffKeep
+    case syncTurnOffRemove
+    case syncIncludeSamples
+    case syncIncludeSamplesHelp
+    case syncWhatSyncs
+    case syncItemSnippets
+    case syncItemModes
+    case syncItemApps
+    case syncItemInstructions
+    case syncItemMyInfo
+    case syncNeverNote
+    case syncEncryptionNote
+
+    // ━━━ v1.4 T9 integration polish ━━━
+    case popoverStatusSnoozed
 }
 
 enum Translations {
@@ -406,8 +621,8 @@ enum Translations {
             .arabic:  "إضافة مسافة بعد القبول"
         ],
         .generalSpaceAfterTabHelp: [
-            .english: "When you press Tab, insert a trailing space after the accepted word.",
-            .arabic:  "عند الضغط على Tab، أضف مسافة بعد الكلمة المقبولة."
+            .english: "Insert a space after the last word you accept with the accept key (Tab or →). Words inside a longer suggestion always keep their spaces.",
+            .arabic:  "أضف مسافة بعد آخر كلمة تقبلها بمفتاح القبول (Tab أو →). أما الكلمات داخل اقتراح أطول فتحتفظ بمسافاتها دائماً."
         ],
         .generalAutoUpdate: [
             .english: "Automatic updates",
@@ -453,8 +668,8 @@ enum Translations {
             .arabic:  "إزالة كل شيء"
         ],
         .uninstallEverythingHelp: [
-            .english: "Also trashes downloaded models and settings. This frees the most space.",
-            .arabic:  "يحذف أيضاً النماذج المُنزّلة والإعدادات إلى سلة المهملات. يوفّر أكبر مساحة."
+            .english: "Also trashes downloaded models and settings. This frees the most space. Also moves QalamAI’s encrypted iCloud Drive sync copy to the Trash.",
+            .arabic:  "يحذف أيضاً النماذج المُنزّلة والإعدادات إلى سلة المهملات. يوفّر أكبر مساحة. وينقل أيضاً نسخة مزامنة QalamAI المشفّرة في iCloud Drive إلى سلة المهملات."
         ],
         .uninstallReveal: [
             .english: "Show my data in Finder",
@@ -553,10 +768,6 @@ enum Translations {
         .generalExcludedApps: [
             .english: "Excluded apps",
             .arabic:  "التطبيقات المستبعدة"
-        ],
-        .generalExcludedAppsHelp: [
-            .english: "No apps excluded. QalamAI will suggest in every app where it can read text.",
-            .arabic:  "لا توجد تطبيقات مستبعدة. سيقترح QalamAI في كل تطبيق يستطيع قراءة النص فيه."
         ],
 
         // ━━━ Menu bar popover ━━━
@@ -680,7 +891,6 @@ enum Translations {
             .english: "Grant Screen Recording",
             .arabic:  "منح صلاحية تسجيل الشاشة"
         ],
-        .generalAddApp: [.english: "Add app", .arabic: "إضافة تطبيق"],
 
         // ━━━ Modes tab ━━━
         .modesHeading:    [.english: "Writing Modes", .arabic: "أنماط الكتابة"],
@@ -721,7 +931,6 @@ enum Translations {
             .arabic:  "المفاتيح التي تتفاعل مع الاقتراحات ومع QalamAI نفسه."
         ],
         .shortcutAcceptWord: [.english: "Accept next word", .arabic: "قبول الكلمة التالية"],
-        .shortcutAcceptLine: [.english: "Accept full line", .arabic: "قبول السطر كاملاً"],
         .shortcutDismiss:    [.english: "Dismiss suggestion", .arabic: "تجاهل الاقتراح"],
         .shortcutPauseResume:[.english: "Pause / Resume", .arabic: "إيقاف مؤقت / استئناف"],
         .shortcutPauseHelp:  [
@@ -832,6 +1041,571 @@ enum Translations {
         .rewriteToneConcise: [ .english: "Concise", .arabic: "موجز" ],
         .rewriteToneExpand: [ .english: "Expand", .arabic: "توسيع" ],
         .rewriteToneGrammar: [ .english: "Fix grammar", .arabic: "تصحيح القواعد" ],
+        // ━━━ v1.4 T1 stability ━━━
+        .popoverSecureInputPaused: [
+            .english: "Paused while Secure Input is on",
+            .arabic:  "متوقف مؤقتاً أثناء تفعيل الإدخال الآمن"
+        ],
+        .popoverSecureInputHelp: [
+            .english: "A password field or another app has turned on Secure Input. Suggestions resume automatically.",
+            .arabic:  "فعّل حقل كلمة مرور أو تطبيق آخر الإدخال الآمن. ستُستأنف الاقتراحات تلقائياً."
+        ],
+        .popoverStatusRestarting: [ .english: "Restarting engine…", .arabic: "جارٍ إعادة تشغيل المحرك…" ],
+        .popoverStatusEngineFailed: [ .english: "Engine stopped", .arabic: "توقف المحرك" ],
+        .popoverEngineFailedHelp: [
+            .english: "The local engine kept stopping, so automatic restarts are paused.",
+            .arabic:  "توقف المحرك المحلي مراراً، لذا أُوقفت إعادة التشغيل التلقائية مؤقتاً."
+        ],
+        .popoverEngineRetry: [ .english: "Retry", .arabic: "إعادة المحاولة" ],
+        .rewriteTimedOut: [
+            .english: "The model didn't respond in time. Try again.",
+            .arabic:  "لم يستجب النموذج في الوقت المحدد. حاول مجدداً."
+        ],
+        // ━━━ v1.4 T2 diagnostics ━━━
+        .diagShowLogs: [ .english: "Show log files", .arabic: "عرض ملفات السجل" ],
+        // ━━━ v1.4 T3 apps & profiles ━━━
+        .tabApps: [ .english: "Apps", .arabic: "التطبيقات" ],
+        .appsHeading: [ .english: "Apps & Websites", .arabic: "التطبيقات والمواقع" ],
+        .appsSubheading: [
+            .english: "Choose how QalamAI works in each app or website. Anything set to Inherit follows your global settings.",
+            .arabic:  "اختر طريقة عمل QalamAI في كل تطبيق أو موقع. كل ما يُترك على «افتراضي» يتبع إعداداتك العامة."
+        ],
+        .appsAddFrontmostFmt: [ .english: "Add %@", .arabic: "إضافة %@" ],
+        .appsAddFrontmost: [ .english: "Add frontmost app", .arabic: "إضافة التطبيق النشط" ],
+        .appsAddRunning: [ .english: "Add running app", .arabic: "إضافة تطبيق مفتوح" ],
+        .appsAddWebsite: [ .english: "Add website", .arabic: "إضافة موقع" ],
+        .appsWebsitePlaceholder: [ .english: "example.com", .arabic: "example.com" ],
+        .appsWebsiteInvalid: [
+            .english: "Enter a website address like example.com.",
+            .arabic:  "أدخل عنوان موقع مثل example.com."
+        ],
+        .appsAddHelp: [
+            .english: "Apps show up here once you type in them. Websites are recognised in Safari, Chrome, Edge, Brave, Arc and other browsers; a website's settings also apply to its subdomains.",
+            .arabic:  "تظهر التطبيقات هنا بمجرد الكتابة فيها. تُكتشف المواقع في Safari وChrome وEdge وBrave وArc وغيرها من المتصفحات، وتنطبق إعدادات الموقع على نطاقاته الفرعية أيضاً."
+        ],
+        .appsConfigured: [ .english: "With custom settings", .arabic: "بإعدادات مخصّصة" ],
+        .appsConfiguredEmpty: [
+            .english: "Nothing customized yet — every app and website uses your global settings.",
+            .arabic:  "لا توجد تخصيصات بعد — كل التطبيقات والمواقع تستخدم إعداداتك العامة."
+        ],
+        .appsRecent: [ .english: "Recently seen", .arabic: "شوهدت مؤخراً" ],
+        .appsRecentEmpty: [
+            .english: "Apps and websites you type in will appear here.",
+            .arabic:  "ستظهر هنا التطبيقات والمواقع التي تكتب فيها."
+        ],
+        .appsShowAllFmt: [ .english: "Show all (%d)", .arabic: "عرض الكل (%d)" ],
+        .appsShowFewer: [ .english: "Show fewer", .arabic: "عرض أقل" ],
+        .appsRecentSitesHelp: [
+            .english: "Recently seen websites are kept in memory only and forgotten when QalamAI quits. A website is saved only after you change one of its settings.",
+            .arabic:  "تُحفظ المواقع التي شوهدت مؤخراً في الذاكرة فقط وتُنسى عند إغلاق QalamAI. لا يُحفظ الموقع إلا بعد تغيير أحد إعداداته."
+        ],
+        .appsWebsite: [ .english: "Website", .arabic: "موقع ويب" ],
+        .appsCustomized: [ .english: "Custom", .arabic: "مخصّص" ],
+        .appsSelectPrompt: [
+            .english: "Select an app or website above to change its settings.",
+            .arabic:  "اختر تطبيقاً أو موقعاً أعلاه لتغيير إعداداته."
+        ],
+        .appsActivation: [ .english: "Suggestions", .arabic: "الاقتراحات" ],
+        .appsActivationInherit: [ .english: "Inherit", .arabic: "افتراضي" ],
+        .appsActivationAlwaysOn: [ .english: "Always on", .arabic: "مفعّلة دائماً" ],
+        .appsActivationForceOnly: [ .english: "Force only", .arabic: "عند الطلب فقط" ],
+        .appsActivationOff: [ .english: "Off", .arabic: "متوقفة" ],
+        .appsActivationHelp: [
+            .english: "Always on skips the automatic idle rules (search boxes, narrow fields). Force only waits for ⌃ + the key above Tab. A website inherits its browser's setting.",
+            .arabic:  "«مفعّلة دائماً» تتجاوز قواعد الإيقاف التلقائي (مربعات البحث والحقول الضيقة). «عند الطلب فقط» تنتظر ⌃ + المفتاح فوق Tab. يرث الموقع إعداد متصفحه."
+        ],
+        .appsWritingMode: [ .english: "Writing mode", .arabic: "نمط الكتابة" ],
+        .appsInherit: [ .english: "Inherit", .arabic: "افتراضي" ],
+        .appsInheritValueFmt: [ .english: "Inherit (%@)", .arabic: "افتراضي (%@)" ],
+        .appsLanguage: [ .english: "Language", .arabic: "اللغة" ],
+        .appsLanguageAuto: [ .english: "Automatic", .arabic: "تلقائي" ],
+        .appsLanguageEnglish: [ .english: "English only", .arabic: "الإنجليزية فقط" ],
+        .appsLanguageArabic: [ .english: "Arabic only", .arabic: "العربية فقط" ],
+        .appsLanguageHelp: [
+            .english: "Only suggest when you're typing in this language.",
+            .arabic:  "لا تقترح إلا عند الكتابة بهذه اللغة."
+        ],
+        .appsAutocorrect: [ .english: "Corrections", .arabic: "التصحيحات" ],
+        .appsAutocorrectHelp: [
+            .english: "Spelling and grammar fixes offered as suggestions. Inherit follows the General tab.",
+            .arabic:  "إصلاحات الإملاء والقواعد المعروضة كاقتراحات. «افتراضي» يتبع تبويب «عام»."
+        ],
+        .appsOn: [ .english: "On", .arabic: "تشغيل" ],
+        .appsOff: [ .english: "Off", .arabic: "إيقاف" ],
+        .appsInstructions: [ .english: "Custom instructions", .arabic: "تعليمات مخصّصة" ],
+        .appsInstructionsHelp: [
+            .english: "Added after your global instructions (My Info) for this app or website.",
+            .arabic:  "تُضاف بعد تعليماتك العامة (معلوماتي) لهذا التطبيق أو الموقع."
+        ],
+        .appsInstructionsPlaceholder: [
+            .english: "e.g. Reply briefly and casually.",
+            .arabic:  "مثال: ردّ باختصار وبأسلوب ودّي."
+        ],
+        .appsReset: [ .english: "Reset to inherit", .arabic: "إعادة إلى الافتراضي" ],
+        .appsRemove: [ .english: "Remove", .arabic: "إزالة" ],
+        .appsOpen: [ .english: "Open Apps", .arabic: "فتح التطبيقات" ],
+        .appsManageHint: [
+            .english: "Exclusions and per-app settings now live in the Apps tab.",
+            .arabic:  "الاستبعادات وإعدادات كل تطبيق أصبحت في تبويب «التطبيقات»."
+        ],
+        .myInfoInstructionsTitle: [
+            .english: "Custom AI instructions",
+            .arabic:  "تعليمات مخصّصة للذكاء الاصطناعي"
+        ],
+        .myInfoInstructionsHelp: [
+            .english: "Tell QalamAI about yourself or how you write. Added to every suggestion request; stays on this Mac.",
+            .arabic:  "أخبر QalamAI عن نفسك أو عن أسلوب كتابتك. تُضاف إلى كل طلب اقتراح وتبقى على هذا الجهاز."
+        ],
+        .myInfoInstructionsPlaceholder: [
+            .english: "e.g. I'm a product manager. Keep suggestions clear and friendly.",
+            .arabic:  "مثال: أنا مدير منتجات. اجعل الاقتراحات واضحة وودية."
+        ],
+        .popoverSuggestInAppFmt: [ .english: "Suggest in %@", .arabic: "الاقتراح في %@" ],
+        .popoverSuggestOnSiteFmt: [ .english: "Suggest on %@", .arabic: "الاقتراح على %@" ],
+        .popoverAppPausedFmt: [ .english: "Paused in %@ · %d min left", .arabic: "متوقف مؤقتاً في %@ · بقي %d د" ],
+        // ━━━ v1.4 T4 shortcuts & activation ━━━
+        .shortcutCardVisible: [
+            .english: "While a suggestion is visible",
+            .arabic:  "أثناء ظهور اقتراح"
+        ],
+        .shortcutCardAnywhere: [ .english: "Anywhere", .arabic: "في أي مكان" ],
+        .shortcutCardEsc: [ .english: "The Esc key", .arabic: "مفتاح Esc" ],
+        .shortcutAcceptWordHelp: [
+            .english: "Inserts the next word of the suggestion.",
+            .arabic:  "يُدرج الكلمة التالية من الاقتراح."
+        ],
+        .shortcutTabPassNote: [
+            .english: "In apps set to “Tab passes through” in the Apps tab, → accepts instead.",
+            .arabic:  "في التطبيقات المضبوطة على «تمرير Tab» في تبويب «التطبيقات»، يقبل مفتاح → بدلاً منه."
+        ],
+        .shortcutAcceptAll: [ .english: "Accept the whole suggestion", .arabic: "قبول الاقتراح كاملاً" ],
+        .shortcutAcceptAllHelp: [
+            .english: "Inserts everything that is showing.",
+            .arabic:  "يُدرج كل ما هو معروض."
+        ],
+        .shortcutRealTab: [ .english: "Insert a real Tab", .arabic: "إدراج Tab فعلي" ],
+        .shortcutRealTabHelp: [
+            .english: "Sends a normal Tab to the app instead of accepting the suggestion.",
+            .arabic:  "يرسل Tab عادياً إلى التطبيق بدل قبول الاقتراح."
+        ],
+        .shortcutDismissHelp: [
+            .english: "Hides the suggestion. Esc reaches the app only with the last option below.",
+            .arabic:  "يُخفي الاقتراح. لا يصل Esc إلى التطبيق إلا مع الخيار الأخير أدناه."
+        ],
+        .shortcutRegenerate: [ .english: "Show a different suggestion", .arabic: "عرض اقتراح مختلف" ],
+        .shortcutRegenerateHelp: [
+            .english: "Asks the model for another completion for the same text.",
+            .arabic:  "يطلب من النموذج إكمالاً آخر للنص نفسه."
+        ],
+        .shortcutForceActivate: [ .english: "Suggest now", .arabic: "اقترح الآن" ],
+        .shortcutForceActivateHelp: [
+            .english: "Asks for a suggestion in the current field right away — including search boxes, narrow fields and apps set to Force only. Never in password fields or apps set to Off.",
+            .arabic:  "يطلب اقتراحاً في الحقل الحالي فوراً — بما في ذلك مربعات البحث والحقول الضيقة والتطبيقات المضبوطة على «عند الطلب فقط». لا يعمل أبداً في حقول كلمات المرور أو التطبيقات المتوقفة."
+        ],
+        .shortcutForceEditorsHelp: [
+            .english: "In VS Code, Cursor, Windsurf, Zed, Sublime Text and the JetBrains IDEs this key keeps its editor meaning, unless you set that editor to Force only in the Apps tab.",
+            .arabic:  "في VS Code وCursor وWindsurf وZed وSublime Text وبيئات JetBrains يحتفظ هذا المفتاح بوظيفته في المحرّر، إلا إذا ضبطت المحرّر على «عند الطلب فقط» في تبويب «التطبيقات»."
+        ],
+        .shortcutAppToggle: [
+            .english: "Pause in this app for 10 minutes",
+            .arabic:  "إيقاف مؤقت في هذا التطبيق ١٠ دقائق"
+        ],
+        .shortcutAppToggleHelp: [
+            .english: "Press it again to resume. The menu bar shows how long is left.",
+            .arabic:  "اضغطه مجدداً للاستئناف. تعرض شريط القوائم الوقت المتبقي."
+        ],
+        .shortcutRewrite: [ .english: "Rewrite the selected text", .arabic: "إعادة صياغة النص المحدد" ],
+        .shortcutRewriteHelp: [
+            .english: "Select some text, then pick a tone: formal, casual, concise…",
+            .arabic:  "حدّد نصاً ثم اختر النبرة: رسمي أو ودّي أو موجز…"
+        ],
+        .shortcutEditorsPassHelp: [
+            .english: "In VS Code, Cursor, Windsurf, Zed and Sublime Text these keys keep their editor meaning.",
+            .arabic:  "في VS Code وCursor وWindsurf وZed وSublime Text تحتفظ هذه المفاتيح بوظيفتها في المحرّر."
+        ],
+        .shortcutKeyAboveTab: [ .english: "key above Tab", .arabic: "المفتاح فوق Tab" ],
+        .shortcutKeyAboveTabHelp: [
+            .english: "On the Arabic layout this key types ذ — QalamAI only ever uses it together with ⌃, so typing ذ is never affected. On keyboards with a § key, the key next to left Shift works too.",
+            .arabic:  "على التخطيط العربي يكتب هذا المفتاح حرف ذ — ولا يستخدمه QalamAI إلا مع ⌃، فلا تتأثر كتابة ذ أبداً. على لوحات المفاتيح التي فيها مفتاح §، يعمل أيضاً المفتاح المجاور لـ Shift الأيسر."
+        ],
+        .shortcutEscDismiss: [ .english: "Dismiss only", .arabic: "إخفاء الاقتراح فقط" ],
+        .shortcutEscDismissPause: [
+            .english: "Dismiss and pause this field for 15 seconds",
+            .arabic:  "إخفاء الاقتراح وإيقاف هذا الحقل ١٥ ثانية"
+        ],
+        .shortcutEscPass: [ .english: "Pass Esc to the app", .arabic: "تمرير Esc إلى التطبيق" ],
+        .shortcutEscHelp: [
+            .english: "Esc is only intercepted while a suggestion is visible. “Pass Esc to the app” hides the suggestion and lets the app see Esc as well.",
+            .arabic:  "لا يُعترض Esc إلا أثناء ظهور اقتراح. خيار «تمرير Esc إلى التطبيق» يُخفي الاقتراح ويترك التطبيق يستقبل Esc أيضاً."
+        ],
+        .toastPaused: [ .english: "QalamAI paused", .arabic: "تم إيقاف QalamAI مؤقتاً" ],
+        .toastResumed: [ .english: "QalamAI resumed", .arabic: "تم استئناف QalamAI" ],
+        .toastPausedAppFmt: [
+            .english: "Paused in %@ for 10 minutes",
+            .arabic:  "متوقف مؤقتاً في %@ لمدة ١٠ دقائق"
+        ],
+        .toastResumedAppFmt: [ .english: "Resumed in %@", .arabic: "تم الاستئناف في %@" ],
+        .toastNoField: [
+            .english: "No text field to suggest in",
+            .arabic:  "لا يوجد حقل نص للاقتراح فيه"
+        ],
+        .toastForceBlocked: [
+            .english: "Suggestions are off here",
+            .arabic:  "الاقتراحات متوقفة هنا"
+        ],
+        .appsTabAccept: [ .english: "Tab key", .arabic: "مفتاح Tab" ],
+        .appsTabAcceptOn: [ .english: "Tab accepts", .arabic: "Tab يقبل" ],
+        .appsTabAcceptOff: [ .english: "Tab passes through", .arabic: "تمرير Tab" ],
+        .appsTabAcceptHelp: [
+            .english: "When Tab passes through, → accepts the next word and ⇧→ accepts the whole suggestion. The hint on the suggestion may still show ⇥.",
+            .arabic:  "عند تمرير Tab، يقبل مفتاح → الكلمة التالية ويقبل ⇧→ الاقتراح كاملاً. قد يظل التلميح على الاقتراح يعرض ⇥."
+        ],
+
+        // ━━━ v1.4 T5 mirror bubble, compatibility, field button ━━━
+        .appsDisplay: [ .english: "Where suggestions appear", .arabic: "مكان ظهور الاقتراحات" ],
+        .appsDisplayInline: [ .english: "At the cursor", .arabic: "عند المؤشر" ],
+        .appsDisplayMirror: [ .english: "Bubble", .arabic: "فقاعة" ],
+        .appsDisplayHelp: [
+            .english: "“Bubble” shows the suggestion in a small box above the text field — use it for apps where the text at the cursor lands in the wrong place.",
+            .arabic:  "يعرض خيار «فقاعة» الاقتراح في مربع صغير فوق حقل النص — استخدمه في التطبيقات التي يظهر فيها النص عند المؤشر في مكان خاطئ."
+        ],
+        .appsCompat: [ .english: "Improve compatibility", .arabic: "تحسين التوافق" ],
+        .appsCompatElectron: [ .english: "Electron", .arabic: "Electron" ],
+        .appsCompatHelp: [
+            .english: "For apps built with Electron (Slack, Discord, Notion…). Turns on the app's accessibility support so QalamAI can read what you type. Takes effect immediately; turning it off takes effect after the app restarts. In code editors this can switch them into screen-reader mode, so it is never turned on there by itself.",
+            .arabic:  "للتطبيقات المبنية بـ Electron (مثل Slack وDiscord وNotion). يُفعّل دعم إمكانية الوصول في التطبيق ليتمكن QalamAI من قراءة ما تكتبه. يسري فوراً، أما إيقافه فيسري بعد إعادة تشغيل التطبيق. في محررات الأكواد قد يُحوّلها إلى وضع قارئ الشاشة، لذا لا يُفعَّل فيها تلقائياً."
+        ],
+        .generalDisplay: [ .english: "Display", .arabic: "العرض" ],
+        .generalCaretUnavailable: [
+            .english: "When the cursor position is unavailable",
+            .arabic:  "عندما يتعذر تحديد موضع المؤشر"
+        ],
+        .generalCaretUnavailableBubble: [ .english: "Show bubble", .arabic: "عرض فقاعة" ],
+        .generalCaretUnavailableHide: [ .english: "Hide suggestion", .arabic: "إخفاء الاقتراح" ],
+        .generalCaretUnavailableHelp: [
+            .english: "Some apps don't report where the cursor is. QalamAI can then show the suggestion in a small bubble above the text field instead — the same keys accept or dismiss it.",
+            .arabic:  "بعض التطبيقات لا تُبلغ عن موضع المؤشر. عندها يمكن لـ QalamAI عرض الاقتراح في فقاعة صغيرة فوق حقل النص — وتقبله أو تُخفيه المفاتيح نفسها."
+        ],
+        .generalFieldButton: [
+            .english: "Show a QalamAI button next to text fields",
+            .arabic:  "إظهار زر QalamAI بجانب حقول النص"
+        ],
+        .generalFieldButtonHelp: [
+            .english: "A small badge at the corner of the field you are typing in. Click it to turn QalamAI off in that app, pause it, or open its settings. It hides while you type and while a suggestion is showing.",
+            .arabic:  "شارة صغيرة عند زاوية الحقل الذي تكتب فيه. انقرها لإيقاف QalamAI في ذلك التطبيق أو تعليقه أو فتح إعداداته. تختفي أثناء الكتابة وأثناء ظهور اقتراح."
+        ],
+        .fieldButtonDisableFmt: [ .english: "Turn off in %@", .arabic: "إيقاف في %@" ],
+        .fieldButtonEnableFmt: [ .english: "Turn on in %@", .arabic: "تشغيل في %@" ],
+        .fieldButtonPause10: [ .english: "Pause for 10 minutes", .arabic: "تعليق لمدة ١٠ دقائق" ],
+        .fieldButtonSettings: [ .english: "Settings for this app…", .arabic: "إعدادات هذا التطبيق…" ],
+
+        // ━━━ v1.4 T6 personalization ━━━
+        .tabPersonalization: [ .english: "Personalization", .arabic: "التخصيص" ],
+        .personaHeading: [ .english: "Learn how you write", .arabic: "تعلَّم أسلوب كتابتك" ],
+        .personaSubheading: [
+            .english: "QalamAI can keep a private, encrypted copy of your own writing on this Mac and use it to make suggestions sound like you.",
+            .arabic:  "يمكن لـ QalamAI حفظ نسخة خاصة ومشفَّرة من كتابتك على هذا الماك واستخدامها لجعل الاقتراحات تشبه أسلوبك."
+        ],
+        .personaRecord: [ .english: "Learn from my writing", .arabic: "التعلّم من كتابتي" ],
+        .personaRecordHelp: [
+            .english: "Off by default. What you write is encrypted and stored only on this Mac — it is never sent anywhere. Password fields, anything typed while secure input is on, apps and sites you turned QalamAI off in, and short pieces of text are never saved. Terminals are off unless you turn them on.",
+            .arabic:  "مُعطَّل افتراضياً. ما تكتبه يُشفَّر ويُحفظ على هذا الماك فقط ولا يُرسل إلى أي مكان. لا تُحفظ حقول كلمات المرور، ولا ما يُكتب أثناء تفعيل الإدخال الآمن، ولا التطبيقات والمواقع التي أوقفت QalamAI فيها، ولا النصوص القصيرة. الطرفية مُعطَّلة ما لم تُفعّلها بنفسك."
+        ],
+        .personaMode: [ .english: "What to keep", .arabic: "ما الذي يُحفظ" ],
+        .personaModeAccepted: [
+            .english: "Only text where I accepted a suggestion",
+            .arabic:  "النص الذي قبِلتُ فيه اقتراحاً فقط"
+        ],
+        .personaModeEverything: [
+            .english: "Everything I type in monitored fields",
+            .arabic:  "كل ما أكتبه في الحقول المشمولة"
+        ],
+        .personaModeHelp: [
+            .english: "The first option keeps far less, and only from places you already use QalamAI in.",
+            .arabic:  "الخيار الأول يحفظ أقل بكثير، ومن الأماكن التي تستخدم فيها QalamAI فعلاً فقط."
+        ],
+        .personaStrength: [ .english: "How much to use", .arabic: "مقدار الاستخدام" ],
+        .personaStrengthOff: [ .english: "Off", .arabic: "إيقاف" ],
+        .personaStrengthLow: [ .english: "Low", .arabic: "منخفض" ],
+        .personaStrengthMedium: [ .english: "Medium", .arabic: "متوسط" ],
+        .personaStrengthStrong: [ .english: "Strong", .arabic: "قوي" ],
+        .personaStrengthHelp: [
+            .english: "How many short excerpts of your writing are added to each request. Stronger means more of your style, and a slightly slower suggestion.",
+            .arabic:  "عدد المقتطفات القصيرة من كتابتك التي تُضاف إلى كل طلب. كلما زاد المقدار ظهر أسلوبك أكثر وصار الاقتراح أبطأ قليلاً."
+        ],
+        .personaSamples: [ .english: "Saved writing", .arabic: "الكتابة المحفوظة" ],
+        .personaSamplesHelp: [
+            .english: "Counted per app. Older pieces are removed automatically once the store is full.",
+            .arabic:  "العدد لكل تطبيق. تُحذف القطع الأقدم تلقائياً عند امتلاء المخزن."
+        ],
+        .personaSamplesEmpty: [ .english: "Nothing saved yet.", .arabic: "لا يوجد شيء محفوظ بعد." ],
+        .personaSampleCountFmt: [ .english: "%d pieces", .arabic: "%d قطعة" ],
+        .personaDelete: [ .english: "Delete", .arabic: "حذف" ],
+        .personaDeleteAll: [ .english: "Delete all saved writing…", .arabic: "حذف كل الكتابة المحفوظة…" ],
+        .personaDeleteAllTitle: [ .english: "Delete all saved writing?", .arabic: "حذف كل الكتابة المحفوظة؟" ],
+        .personaDeleteAllConfirm: [
+            .english: "Everything QalamAI learned from your writing is removed from this Mac. This can't be undone.",
+            .arabic:  "سيُحذف كل ما تعلّمه QalamAI من كتابتك من هذا الماك. لا يمكن التراجع عن ذلك."
+        ],
+        .personaPrivacy: [
+            .english: "Stored encrypted (AES-GCM) in your Application Support folder, with the key in your login keychain — or in a protected file on this Mac if the keychain refuses it. Nothing is uploaded, and none of it appears in logs or diagnostics.",
+            .arabic:  "يُحفظ مشفَّراً (AES-GCM) في مجلد Application Support، ويُحفظ المفتاح في سلسلة مفاتيح تسجيل الدخول، أو في ملف محمي على هذا الماك إذا تعذّر ذلك. لا يُرفع أي شيء ولا يظهر منه شيء في السجلات أو التشخيص."
+        ],
+        .personaUnavailable: [
+            .english: "The encryption key couldn't be read from your keychain, so saved writing is unavailable in this session. Nothing was deleted; unlock your login keychain and reopen QalamAI.",
+            .arabic:  "تعذّرت قراءة مفتاح التشفير من سلسلة المفاتيح، لذا الكتابة المحفوظة غير متاحة في هذه الجلسة. لم يُحذف شيء؛ افتح قفل سلسلة مفاتيح تسجيل الدخول ثم أعد فتح QalamAI."
+        ],
+        .appsRecord: [ .english: "Learn from my writing", .arabic: "التعلّم من كتابتي" ],
+        .appsRecordHelp: [
+            .english: "Whether writing in this app may be saved for personalization. Terminals are off unless you turn them on. Nothing is saved while the main switch in Personalization is off.",
+            .arabic:  "ما إذا كان يُسمح بحفظ الكتابة في هذا التطبيق للتخصيص. الطرفية مُعطَّلة ما لم تُفعّلها. لا يُحفظ شيء ما دام المفتاح الرئيسي في «التخصيص» مُعطَّلاً."
+        ],
+        .appsRecordSamplesFmt: [ .english: "%d pieces saved", .arabic: "%d قطعة محفوظة" ],
+        .appsRecordDelete: [ .english: "Delete saved writing", .arabic: "حذف الكتابة المحفوظة" ],
+
+        // ━━━ v1.4 T7 suggestion features ━━━
+        .generalCompletionShort: [ .english: "Short", .arabic: "قصير" ],
+        .generalCompletionMedium: [ .english: "Medium", .arabic: "متوسط" ],
+        .generalCompletionLong: [ .english: "Long", .arabic: "طويل" ],
+        .generalCompletionLengthHelp: [
+            .english: "Short stops at the end of the first clause. Medium is the usual few words. Long lets the model use everything it is allowed. The slider below fine-tunes the same setting.",
+            .arabic:  "«قصير» يتوقف عند نهاية أول جملة فرعية. «متوسط» هو بضع كلمات كالمعتاد. «طويل» يتيح للنموذج استخدام كل ما هو مسموح به. يضبط الشريط أدناه الإعداد نفسه بدقة."
+        ],
+        .generalCompletionLongUnavailable: [
+            .english: "The current model is limited to 5 words, so Long isn't available. Pick a larger model in Models.",
+            .arabic:  "النموذج الحالي محدود بخمس كلمات، لذا «طويل» غير متاح. اختر نموذجاً أكبر من «النماذج»."
+        ],
+        .generalMidLine: [
+            .english: "Suggest in the middle of a line",
+            .arabic:  "الاقتراح في منتصف السطر"
+        ],
+        .generalMidLineHelp: [
+            .english: "On by default. QalamAI writes what fits between the cursor and the text that already follows it on the same line, and never repeats that text. Turn this off to get suggestions only at the end of a line.",
+            .arabic:  "مُفعَّل افتراضياً. يكتب QalamAI ما يناسب المسافة بين المؤشر والنص الموجود بعده في السطر نفسه، ولا يكرر ذلك النص أبداً. أوقفه لتحصل على الاقتراحات في نهاية السطر فقط."
+        ],
+        .generalAlternativesAutoShow: [
+            .english: "Show alternatives automatically after a pause",
+            .arabic:  "إظهار البدائل تلقائياً بعد توقف قصير"
+        ],
+        .generalAlternativesAutoShowHelp: [
+            .english: "Off by default. When a suggestion is on screen and you stop typing for about a second and a half, the numbered list of other words opens by itself.",
+            .arabic:  "مُعطَّل افتراضياً. عندما يكون هناك اقتراح ظاهر وتتوقف عن الكتابة نحو ثانية ونصف، تُفتح قائمة الكلمات الأخرى المرقّمة من تلقاء نفسها."
+        ],
+        .generalAutocorrectStyle: [
+            .english: "How a fix is shown",
+            .arabic:  "طريقة عرض التصحيح"
+        ],
+        .generalAutocorrectStyleInline: [
+            .english: "Show the fix as a suggestion",
+            .arabic:  "عرض التصحيح كاقتراح"
+        ],
+        .generalAutocorrectStyleArrow: [
+            .english: "Show typo → fix",
+            .arabic:  "عرض الخطأ ← التصحيح"
+        ],
+        .generalAutocorrectStyleHelp: [
+            .english: "Press the accept key to apply. QalamAI never changes your text on its own.",
+            .arabic:  "اضغط مفتاح القبول لتطبيق التصحيح. لا يغيّر QalamAI نصك من تلقاء نفسه أبداً."
+        ],
+        .shortcutAcceptAllAboveTab: [
+            .english: "Accept the whole suggestion with the key above Tab",
+            .arabic:  "قبول الاقتراح كاملاً بالمفتاح الذي فوق Tab"
+        ],
+        .shortcutAcceptAllAboveTabHelp: [
+            .english: "Off by default. While a suggestion is visible, the key above Tab accepts all of it. On the Arabic layout that key types ذ — you won't be able to type ذ while a suggestion is showing.",
+            .arabic:  "مُعطَّل افتراضياً. أثناء ظهور اقتراح، يقبل المفتاح الذي فوق Tab الاقتراح كاملاً. في تخطيط لوحة المفاتيح العربية يكتب هذا المفتاح حرف ذ — لن تتمكن من كتابة ذ أثناء ظهور اقتراح."
+        ],
+        .shortcutAlternatives: [
+            .english: "Show other words",
+            .arabic:  "إظهار كلمات أخرى"
+        ],
+        .shortcutAlternativesHelp: [
+            .english: "Lists up to five other words or short phrases that could come next, under the cursor. Only while a suggestion is visible.",
+            .arabic:  "يعرض حتى خمس كلمات أو عبارات قصيرة أخرى يمكن أن تأتي بعد ذلك، أسفل المؤشر. أثناء ظهور اقتراح فقط."
+        ],
+        .shortcutInsertAlternative: [
+            .english: "Insert one of the alternatives",
+            .arabic:  "إدراج أحد البدائل"
+        ],
+        .shortcutInsertAlternativeHelp: [
+            .english: "While the list is open, the number keys insert that option and Esc closes it. The digits reach the app as usual at every other time.",
+            .arabic:  "أثناء فتح القائمة، تُدرج مفاتيح الأرقام الخيار المقابل ويغلقها Esc. في غير ذلك تصل الأرقام إلى التطبيق كالمعتاد."
+        ],
+        .alternativesLoading: [
+            .english: "Looking for alternatives…",
+            .arabic:  "جارٍ البحث عن بدائل…"
+        ],
+
+        // ━━━ v1.4 T8 encrypted iCloud Drive sync ━━━
+        .tabSync: [
+            .english: "Sync",
+            .arabic:  "المزامنة"
+        ],
+        .syncHeading: [
+            .english: "Sync between your Macs",
+            .arabic:  "المزامنة بين أجهزة Mac الخاصة بك"
+        ],
+        .syncSubheading: [
+            .english: "Keep your snippets, writing modes, app and website settings, custom instructions and My Info the same on every Mac. Everything is encrypted on this Mac before it is written to iCloud Drive.",
+            .arabic:  "احتفظ بالمختصرات وأنماط الكتابة وإعدادات التطبيقات والمواقع والتعليمات المخصصة ومعلوماتي متطابقة على كل جهاز Mac. يُشفّر كل شيء على هذا الجهاز قبل كتابته في iCloud Drive."
+        ],
+        .syncUnavailable: [
+            .english: "iCloud Drive isn’t switched on for this Mac. Turn it on in System Settings › Apple Account › iCloud, then come back here.",
+            .arabic:  "iCloud Drive غير مفعّل على هذا الجهاز. فعّله من إعدادات النظام › حساب Apple › iCloud ثم عد إلى هنا."
+        ],
+        .syncTurnOnTitle: [
+            .english: "Turn on sync",
+            .arabic:  "تشغيل المزامنة"
+        ],
+        .syncTurnOn: [
+            .english: "Turn on sync",
+            .arabic:  "تشغيل المزامنة"
+        ],
+        .syncPassphrase: [
+            .english: "Passphrase",
+            .arabic:  "عبارة المرور"
+        ],
+        .syncPassphraseConfirm: [
+            .english: "Passphrase again",
+            .arabic:  "عبارة المرور مرة أخرى"
+        ],
+        .syncPassphraseHelp: [
+            .english: "The passphrase encrypts your data before it reaches iCloud Drive. Use the same passphrase on each Mac. If you forget it, the synced copy can’t be recovered. If the same item exists on this Mac and in iCloud, the iCloud copy is kept.",
+            .arabic:  "تُشفّر عبارة المرور بياناتك قبل وصولها إلى iCloud Drive. استخدم العبارة نفسها على كل جهاز Mac. إذا نسيتها فلن يمكن استرداد النسخة المتزامنة. وإذا وُجد العنصر نفسه على هذا الجهاز وفي iCloud فيُبقى على نسخة iCloud."
+        ],
+        .syncPassphraseTooShort: [
+            .english: "Use at least 8 characters.",
+            .arabic:  "استخدم 8 أحرف على الأقل."
+        ],
+        .syncPassphraseMismatch: [
+            .english: "The two passphrases don’t match.",
+            .arabic:  "عبارتا المرور غير متطابقتين."
+        ],
+        .syncReenterTitle: [
+            .english: "Enter the passphrase again",
+            .arabic:  "أدخل عبارة المرور مرة أخرى"
+        ],
+        .syncReenterHelp: [
+            .english: "The copy in iCloud Drive couldn’t be opened with the stored passphrase. Nothing was changed there. Enter the passphrase you used on your other Mac to carry on.",
+            .arabic:  "تعذّر فتح النسخة الموجودة في iCloud Drive بعبارة المرور المحفوظة، ولم يتغير شيء فيها. أدخل عبارة المرور التي استخدمتها على جهاز Mac الآخر للمتابعة."
+        ],
+        .syncSavePassphrase: [
+            .english: "Save passphrase",
+            .arabic:  "حفظ عبارة المرور"
+        ],
+        .syncStatus: [
+            .english: "Status",
+            .arabic:  "الحالة"
+        ],
+        .syncStatusOff: [
+            .english: "Off",
+            .arabic:  "معطّلة"
+        ],
+        .syncStatusIdle: [
+            .english: "Up to date",
+            .arabic:  "محدّثة"
+        ],
+        .syncStatusSyncing: [
+            .english: "Syncing…",
+            .arabic:  "جارٍ المزامنة…"
+        ],
+        .syncStatusWaiting: [
+            .english: "Waiting for iCloud Drive to download the copy",
+            .arabic:  "بانتظار تنزيل النسخة من iCloud Drive"
+        ],
+        .syncErrorWrongPassphrase: [
+            .english: "Wrong passphrase — the copy in iCloud Drive was left untouched.",
+            .arabic:  "عبارة المرور غير صحيحة — لم يُمسس بالنسخة الموجودة في iCloud Drive."
+        ],
+        .syncErrorKeychain: [
+            .english: "The passphrase couldn’t be saved to the keychain.",
+            .arabic:  "تعذّر حفظ عبارة المرور في سلسلة المفاتيح."
+        ],
+        .syncErrorIO: [
+            .english: "Couldn’t read or write the copy in iCloud Drive. QalamAI will try again.",
+            .arabic:  "تعذّرت قراءة أو كتابة النسخة في iCloud Drive. سيحاول QalamAI مرة أخرى."
+        ],
+        .syncErrorFormat: [
+            .english: "The file in iCloud Drive isn’t a QalamAI sync file.",
+            .arabic:  "الملف الموجود في iCloud Drive ليس ملف مزامنة خاصاً بـ QalamAI."
+        ],
+        .syncLastSync: [
+            .english: "Last sync",
+            .arabic:  "آخر مزامنة"
+        ],
+        .syncNever: [
+            .english: "Never",
+            .arabic:  "لم تحدث بعد"
+        ],
+        .syncNow: [
+            .english: "Sync now",
+            .arabic:  "مزامنة الآن"
+        ],
+        .syncTurnOff: [
+            .english: "Turn off sync",
+            .arabic:  "إيقاف المزامنة"
+        ],
+        .syncTurnOffTitle: [
+            .english: "Turn off sync?",
+            .arabic:  "إيقاف المزامنة؟"
+        ],
+        .syncTurnOffMessage: [
+            .english: "This Mac stops sending and receiving changes. Your settings here stay exactly as they are. You can keep the encrypted copy in iCloud Drive for your other Macs, or move it to the Trash.",
+            .arabic:  "سيتوقف هذا الجهاز عن إرسال التغييرات واستقبالها، وتبقى إعداداتك هنا كما هي. يمكنك الإبقاء على النسخة المشفّرة في iCloud Drive لأجهزتك الأخرى، أو نقلها إلى سلة المهملات."
+        ],
+        .syncTurnOffKeep: [
+            .english: "Keep cloud copy",
+            .arabic:  "الإبقاء على النسخة السحابية"
+        ],
+        .syncTurnOffRemove: [
+            .english: "Move cloud copy to Trash",
+            .arabic:  "نقل النسخة السحابية إلى سلة المهملات"
+        ],
+        .syncIncludeSamples: [
+            .english: "Include saved writing samples",
+            .arabic:  "تضمين عينات الكتابة المحفوظة"
+        ],
+        .syncIncludeSamplesHelp: [
+            .english: "Off by default. Writing samples are the most personal thing QalamAI keeps, so they travel only if you ask. They are encrypted with the same passphrase, in a separate file, and are sent every 15 minutes rather than right away.",
+            .arabic:  "مُعطّل افتراضياً. عينات الكتابة هي أكثر ما يحتفظ به QalamAI خصوصية، لذا لا تُنقل إلا بطلبك. تُشفّر بعبارة المرور نفسها في ملف منفصل، وتُرسل كل 15 دقيقة بدلاً من إرسالها فوراً."
+        ],
+        .syncWhatSyncs: [
+            .english: "What syncs",
+            .arabic:  "ما الذي تتم مزامنته"
+        ],
+        .syncItemSnippets: [
+            .english: "Snippets",
+            .arabic:  "المختصرات"
+        ],
+        .syncItemModes: [
+            .english: "Your own writing modes",
+            .arabic:  "أنماط الكتابة الخاصة بك"
+        ],
+        .syncItemApps: [
+            .english: "App and website settings",
+            .arabic:  "إعدادات التطبيقات والمواقع"
+        ],
+        .syncItemInstructions: [
+            .english: "Custom instructions",
+            .arabic:  "التعليمات المخصصة"
+        ],
+        .syncItemMyInfo: [
+            .english: "My Info",
+            .arabic:  "معلوماتي"
+        ],
+        .syncNeverNote: [
+            .english: "Never synced: screenshots, text read from the screen, the clipboard, logs, usage stats and downloaded models.",
+            .arabic:  "لا تتم مزامنة: لقطات الشاشة، والنص المقروء من الشاشة، والحافظة، والسجلات، وإحصاءات الاستخدام، والنماذج المُنزّلة."
+        ],
+        .syncEncryptionNote: [
+            .english: "Encrypted on this Mac with AES-GCM and a key derived from your passphrase (PBKDF2-SHA256, 310,000 rounds). iCloud Drive only ever holds the encrypted file, and the passphrase stays on this Mac — in your login keychain, or in a protected file if the keychain refuses it.",
+            .arabic:  "يُشفّر على هذا الجهاز بـ AES-GCM بمفتاح مشتقّ من عبارة المرور (PBKDF2-SHA256، 310,000 دورة). لا يحتفظ iCloud Drive إلا بالملف المشفّر، وتبقى عبارة المرور على هذا الجهاز — في سلسلة مفاتيح الدخول، أو في ملف محمي إذا تعذّر ذلك."
+        ],
+        // ━━━ v1.4 T9 integration polish ━━━
+        .popoverStatusSnoozed: [
+            .english: "Snoozed",
+            .arabic:  "مؤجَّل"
+        ],
     ]
 }
 

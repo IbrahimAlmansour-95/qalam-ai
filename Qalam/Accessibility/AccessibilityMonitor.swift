@@ -2,16 +2,51 @@ import Foundation
 import AppKit
 import ApplicationServices
 
+/// Identity of one focused text element (a field change re-yields context).
+struct FieldKey: Hashable, Sendable {
+    let pid: pid_t
+    let elementHash: UInt
+}
+
 struct TextContext: Sendable, Equatable {
     let appBundleID: String?
     let appName: String?          // localized frontmost-app name, e.g. "Mail"
     let textBeforeCursor: String
     let textAfterCursor: String   // suffix in the same field, bounded
     let wordBeingTyped: String
-    let cursorIndex: Int
+    let cursorIndex: Int          // CHARACTER offset of the caret in `fullText`
     let fullText: String
+    let selectionLength: Int      // UTF-16 length of the AX selected range (0 = plain caret)
+    let pid: pid_t                // owner of the focused element (0 if unknown)
+    let elementHash: UInt         // CFHash of the focused element
+    let role: String?
+    let subrole: String?
+    let host: String?             // normalized web host (browsers only), else nil
+    /// Browsers only: true = inside page content (an AXWebArea ancestor),
+    /// false = the walk reached the window without one (browser chrome),
+    /// nil = unknown (non-browser, AX error, level cap, or a rate-limit miss
+    /// whose throttled result was a chrome verdict). A rate-limit miss can
+    /// still yield `true` plus the host of the last page-content walk in the
+    /// same app, which is the point of the throttle — a tab switch inside
+    /// 500 ms can therefore carry the previous tab's host.
+    let isInWebArea: Bool?
+    /// AX size of the field — read only for single-line-ish fields (role
+    /// AXTextField / AXComboBox, subrole AXSearchField), else nil. Used by the
+    /// activation idle rules.
+    let fieldSize: CGSize?
 
-    static let empty = TextContext(appBundleID: nil, appName: nil, textBeforeCursor: "", textAfterCursor: "", wordBeingTyped: "", cursorIndex: 0, fullText: "")
+    var fieldKey: FieldKey { FieldKey(pid: pid, elementHash: elementHash) }
+
+    /// What follows the caret up to the end of the current line. Empty (or
+    /// blank) means the caret sits at the end of its line — the ordinary
+    /// case; anything else means the user is completing MID-LINE.
+    var sameLineSuffix: String {
+        String(textAfterCursor.prefix(while: { !$0.isNewline }))
+    }
+
+    static let empty = TextContext(appBundleID: nil, appName: nil, textBeforeCursor: "", textAfterCursor: "", wordBeingTyped: "", cursorIndex: 0, fullText: "",
+                                   selectionLength: 0, pid: 0, elementHash: 0, role: nil, subrole: nil,
+                                   host: nil, isInWebArea: nil, fieldSize: nil)
 }
 
 /// Polls the focused UI element via the AX API to extract typing context.
@@ -55,14 +90,42 @@ final class AccessibilityMonitor {
         }
     }
 
+    /// The last context that was read (not necessarily this instant). Used by
+    /// surfaces that need to know which field is focused without doing AX work
+    /// of their own.
+    var currentContext: TextContext { lastContext }
+
     /// Sample the focused element's text + caret. Call this on every keystroke.
     func pump() {
-        let ctx = currentTextContext()
-        guard ctx != lastContext else { return }
+        snapshot()
+    }
+
+    /// Reads the focused field now and returns it; a changed context is also
+    /// yielded to every stream, exactly like `pump()`. Returns `.empty` when
+    /// nothing can be read — no focused text element, Secure Input on, or the
+    /// frontmost app backed off. Used by force-activate, which needs the
+    /// context synchronously.
+    @discardableResult
+    func snapshot() -> TextContext {
+        // No AX IPC while Secure Input is on, or while the frontmost app has
+        // tripped the slow-AX breaker (a hung app must not stall the main
+        // thread, which also runs the keystroke tap).
+        if SecureInputMonitor.shared.isActive { return .empty }
+        let pid = AXGuard.frontmostPID()
+        guard !AXGuard.isBackedOff(pid) else { return .empty }
+        let ctx = AXGuard.measure(pid: pid) { currentTextContext() }
+        // Nothing readable: in an Electron app that is the symptom of an
+        // accessibility tree that hasn't been switched on (handled there —
+        // once per process, and only where it is allowed).
+        if ctx == .empty {
+            ElectronCompatibility.shared.noteEmptyRead()
+        }
+        guard ctx != lastContext else { return ctx }
         lastContext = ctx
         for c in continuations.values {
             c.yield(ctx)
         }
+        return ctx
     }
 
     // MARK: - AX extraction
@@ -71,21 +134,24 @@ final class AccessibilityMonitor {
         let systemWide = AXUIElementCreateSystemWide()
         var focused: AnyObject?
         let err = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused)
-        guard err == .success, let elementUnwrapped = focused else { return .empty }
-        // CFTypeID check is safer than direct cast under Swift 6.
-        let element = elementUnwrapped as! AXUIElement
+        guard err == .success, let elementUnwrapped = focused,
+              CFGetTypeID(elementUnwrapped as CFTypeRef) == AXUIElementGetTypeID()
+        else { return .empty }
+        let element = unsafeDowncast(elementUnwrapped, to: AXUIElement.self)
 
         // Skip password fields.
         var roleValue: AnyObject?
-        if AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue) == .success,
-           let role = roleValue as? String, role == "AXSecureTextField" {
-            return .empty
+        var role: String?
+        if AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue) == .success {
+            role = roleValue as? String
         }
+        if role == "AXSecureTextField" { return .empty }
         var subroleValue: AnyObject?
-        if AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subroleValue) == .success,
-           let subrole = subroleValue as? String, subrole == "AXSecureTextField" {
-            return .empty
+        var subrole: String?
+        if AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subroleValue) == .success {
+            subrole = subroleValue as? String
         }
+        if subrole == "AXSecureTextField" { return .empty }
 
         // Pull text value.
         var valueRef: AnyObject?
@@ -97,22 +163,24 @@ final class AccessibilityMonitor {
             return .empty
         }
 
-        // Pull selected range for caret position.
+        // Pull selected range for caret position. AX ranges are UTF-16
+        // offsets (NSString units) — convert to a Character boundary before
+        // slicing, or the prefix is wrong after emoji / Arabic harakat.
         var rangeRef: AnyObject?
-        var cursorIdx = text.count
+        var index = text.endIndex
+        var selectionLength = 0
         if AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeRef) == .success,
-           let rangeValue = rangeRef {
-            // It's an AXValueRef wrapping a CFRange.
-            // Use AXValueGetValue.
-            let axVal = rangeValue as! AXValue
+           let rangeValue = rangeRef,
+           CFGetTypeID(rangeValue as CFTypeRef) == AXValueGetTypeID() {
             var range = CFRange(location: 0, length: 0)
-            if AXValueGetValue(axVal, .cfRange, &range) {
-                cursorIdx = max(0, min(text.count, range.location + range.length))
+            if AXValueGetValue(unsafeDowncast(rangeValue, to: AXValue.self), .cfRange, &range) {
+                index = Self.characterIndex(forUTF16Offset: range.location + range.length, in: text)
+                selectionLength = max(0, range.length)
             }
         }
+        let cursorIdx = text.distance(from: text.startIndex, to: index)
 
         // Slice prefix safely.
-        let index = text.index(text.startIndex, offsetBy: cursorIdx, limitedBy: text.endIndex) ?? text.endIndex
         var prefix = String(text[..<index])
         if prefix.count > Constants.Suggestion.maxContextChars {
             let dropCount = prefix.count - Constants.Suggestion.maxContextChars
@@ -124,10 +192,19 @@ final class AccessibilityMonitor {
         var suffix = String(text[index...])
         if suffix.count > 240 { suffix = String(suffix.prefix(240)) }
 
+        // Field size, only where the idle rules look at it (one AX call).
+        let fieldSize = (role == "AXTextField" || role == "AXComboBox" || subrole == "AXSearchField")
+            ? sizeOf(element) : nil
+
         let lastWord = AccessibilityMonitor.lastWord(in: prefix)
         let frontApp = NSWorkspace.shared.frontmostApplication
         let bundleID = frontApp?.bundleIdentifier
         let appName = frontApp?.localizedName
+        let pid = pidOf(element)
+        let elementHash = CFHash(element)
+        // Which website the field belongs to (browsers only; cached per field).
+        let web = WebDomainDetector.shared.detect(element: element, role: role, bundleID: bundleID,
+                                                  key: FieldKey(pid: pid, elementHash: elementHash))
 
         return TextContext(
             appBundleID: bundleID,
@@ -136,8 +213,46 @@ final class AccessibilityMonitor {
             textAfterCursor: suffix,
             wordBeingTyped: lastWord,
             cursorIndex: cursorIdx,
-            fullText: text
+            fullText: text,
+            selectionLength: selectionLength,
+            pid: pid,
+            elementHash: elementHash,
+            role: role,
+            subrole: subrole,
+            host: web.host,
+            isInWebArea: web.isInWebArea,
+            fieldSize: fieldSize
         )
+    }
+
+    private func pidOf(_ element: AXUIElement) -> pid_t {
+        var pid: pid_t = 0
+        return AXUIElementGetPid(element, &pid) == .success ? pid : 0
+    }
+
+    /// `kAXSizeAttribute` of `element`, type-checked; nil on any failure.
+    private func sizeOf(_ element: AXUIElement) -> CGSize? {
+        var sizeRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success,
+              let value = sizeRef,
+              CFGetTypeID(value as CFTypeRef) == AXValueGetTypeID()
+        else { return nil }
+        var size = CGSize.zero
+        guard AXValueGetValue(unsafeDowncast(value, to: AXValue.self), .cgSize, &size) else { return nil }
+        return size
+    }
+
+    /// The `String.Index` for a UTF-16 offset (AX / NSString units), clamped
+    /// to the text and moved back to the nearest Character boundary so a
+    /// caret reported inside a grapheme cluster never splits it.
+    nonisolated static func characterIndex(forUTF16Offset offset: Int, in text: String) -> String.Index {
+        let utf16 = text.utf16
+        let clamped = max(0, min(offset, utf16.count))
+        var idx = utf16.index(utf16.startIndex, offsetBy: clamped)
+        while idx > text.startIndex, idx.samePosition(in: text) == nil {
+            idx = utf16.index(before: idx)
+        }
+        return idx.samePosition(in: text) ?? text.startIndex
     }
 
     /// Broader surrounding context: visible static-text near the focused field

@@ -19,6 +19,10 @@ struct OllamaBackend: LLMBackend {
                 do {
                     var request = URLRequest(url: Constants.Ollama.generateURL)
                     request.httpMethod = "POST"
+                    // Idle timeout (no bytes for this long → fail). The overall
+                    // per-call deadline is applied by the `deadline:` overload
+                    // in LLMDeadline.swift.
+                    request.timeoutInterval = 30
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
                     let body: [String: Any] = [

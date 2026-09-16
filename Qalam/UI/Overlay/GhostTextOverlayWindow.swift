@@ -139,6 +139,12 @@ final class GhostTextOverlayWindow {
         panel.alphaValue = 0
         panel.orderOut(nil)
     }
+
+    /// Read-only: the ghost panel is on screen with text in it.
+    var isVisible: Bool { panel.isVisible && !viewModel.text.isEmpty }
+
+    /// Read-only: the ghost panel's current screen frame.
+    var frame: NSRect { panel.frame }
 }
 
 enum GhostStyleHint: Sendable {

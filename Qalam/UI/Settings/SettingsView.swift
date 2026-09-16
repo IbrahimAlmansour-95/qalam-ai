@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum SettingsTab: String, CaseIterable, Identifiable, Hashable {
-    case general, models, modes, snippets, myInfo, shortcuts, privacy
+    case general, apps, models, modes, snippets, myInfo, personalization, shortcuts, sync, privacy
 
     var id: String { rawValue }
 
@@ -9,11 +9,14 @@ enum SettingsTab: String, CaseIterable, Identifiable, Hashable {
     var label: String {
         switch self {
         case .general:   return L.t(.tabGeneral)
+        case .apps:      return L.t(.tabApps)
         case .models:    return L.t(.tabModels)
         case .modes:     return L.t(.tabModes)
         case .snippets:  return L.t(.tabSnippets)
         case .myInfo:    return L.t(.tabMyInfo)
+        case .personalization: return L.t(.tabPersonalization)
         case .shortcuts: return L.t(.tabShortcuts)
+        case .sync:      return L.t(.tabSync)
         case .privacy:   return L.t(.tabPrivacy)
         }
     }
@@ -21,11 +24,14 @@ enum SettingsTab: String, CaseIterable, Identifiable, Hashable {
     var icon: String {
         switch self {
         case .general:   return "gearshape"
+        case .apps:      return "square.grid.2x2"
         case .models:    return "cube.box"
         case .modes:     return "wand.and.stars"
         case .snippets:  return "text.bubble"
         case .myInfo:    return "person.text.rectangle"
+        case .personalization: return "person.crop.circle.badge.checkmark"
         case .shortcuts: return "keyboard"
+        case .sync:      return "arrow.triangle.2.circlepath.icloud"
         case .privacy:   return "hand.raised"
         }
     }
@@ -34,6 +40,7 @@ enum SettingsTab: String, CaseIterable, Identifiable, Hashable {
 struct SettingsView: View {
     @State private var selection: SettingsTab = .general
     @State private var l10n = LocalizationStore.shared
+    @State private var appState = AppState.shared
 
     var body: some View {
         HStack(spacing: 0) {
@@ -49,6 +56,15 @@ struct SettingsView: View {
         // and any gaps. Cards inside stand out via backgroundElevated.
         .background(QColors.backgroundPrimary)
         .environment(\.layoutDirection, l10n.current.layoutDirection)
+        // "Settings for this app…" and friends open a specific tab.
+        .onAppear { applyRequestedTab() }
+        .onChange(of: appState.requestedSettingsTab) { _, _ in applyRequestedTab() }
+    }
+
+    private func applyRequestedTab() {
+        guard let tab = appState.requestedSettingsTab else { return }
+        selection = tab
+        appState.requestedSettingsTab = nil
     }
 
     private var sidebar: some View {
@@ -107,11 +123,14 @@ struct SettingsView: View {
     private var content: some View {
         switch selection {
         case .general:   GeneralSettingsView()
+        case .apps:      AppsSettingsView()
         case .models:    ModelsSettingsView()
         case .modes:     ModesSettingsView()
         case .snippets:  SnippetsSettingsView()
         case .myInfo:    MyInfoSettingsView()
+        case .personalization: PersonalizationSettingsView()
         case .shortcuts: ShortcutsSettingsView()
+        case .sync:      SyncSettingsView()
         case .privacy:   PrivacySettingsView()
         }
     }

@@ -21,8 +21,10 @@ CACHE_DIR="$BUILD_DIR/cache"
 OLLAMA_ZIP="$CACHE_DIR/Ollama-darwin.zip"
 OLLAMA_URL="https://github.com/ollama/ollama/releases/latest/download/Ollama-darwin.zip"
 
-SDK=$(/usr/bin/xcrun --sdk macosx --show-sdk-path 2>/dev/null || echo /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk)
-SWIFTC=$(/usr/bin/xcrun --find swiftc 2>/dev/null || echo /Library/Developer/CommandLineTools/usr/bin/swiftc)
+# QALAM_SDK / QALAM_SWIFTC override the toolchain (e.g. to call Xcode's swiftc
+# directly when xcrun is blocked by an unaccepted Xcode license).
+SDK=${QALAM_SDK:-$(/usr/bin/xcrun --sdk macosx --show-sdk-path 2>/dev/null || echo /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk)}
+SWIFTC=${QALAM_SWIFTC:-$(/usr/bin/xcrun --find swiftc 2>/dev/null || echo /Library/Developer/CommandLineTools/usr/bin/swiftc)}
 
 echo "→ Using SDK: $SDK"
 echo "→ Using swiftc: $SWIFTC"

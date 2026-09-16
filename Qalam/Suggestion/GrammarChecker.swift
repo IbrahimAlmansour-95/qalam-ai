@@ -31,14 +31,18 @@ actor GrammarChecker {
     /// FIRST issue whose end is at or just before `cursorOffset` — i.e. the
     /// thing the user just finished typing. Returns nil if there's no
     /// actionable issue at the cursor.
+    ///
+    /// `cursorOffset` and every returned range are UTF-16 offsets into `text`
+    /// (NSString units — the same units NSSpellChecker reports).
     func checkAtCursor(text: String, cursorOffset: Int) async -> GrammarIssue? {
         guard !text.isEmpty else { return nil }
+        let cursor = max(0, min(cursorOffset, (text as NSString).length))
         // Bound the scan to the last sentence-ish window for speed.
-        let (window, windowStart) = recentWindow(of: text, around: cursorOffset)
+        let (window, windowStart) = recentWindow(of: text, around: cursor)
         guard !window.isEmpty else { return nil }
 
         let issues = await runChecker(on: window)
-        let localCursor = cursorOffset - windowStart
+        let localCursor = cursor - windowStart
         // Prefer issues that end at or before the cursor and are within a few
         // chars of it (avoids surfacing fixes for text the user is still typing).
         let nearCursor = issues.first { issue in
@@ -70,22 +74,30 @@ actor GrammarChecker {
         )
     }
 
-    /// Last sentence (or last 240 chars) ending at the cursor.
+    /// Last sentence (or last 240 characters) ending at the cursor. `cursor`
+    /// and the returned start are UTF-16 offsets into `text`; the start is
+    /// where `window`'s first character really sits, so issue ranges map
+    /// back exactly (after trimming and truncation).
     private func recentWindow(of text: String, around cursor: Int) -> (String, Int) {
-        let cur = max(0, min(text.count, cursor))
-        let head = String(text.prefix(cur))
+        let head = text[..<AccessibilityMonitor.characterIndex(forUTF16Offset: cursor, in: text)]
         // Walk backwards to find sentence start.
         var startIndex = head.startIndex
-        if let lastTerm = head.lastIndex(where: { ".?!\n".contains($0) }) {
+        if let lastTerm = head.lastIndex(where: { ".?!".contains($0) || $0.isNewline }) {
             startIndex = head.index(after: lastTerm)
         }
-        var window = String(head[startIndex...]).trimmingCharacters(in: .whitespaces)
+        let sentence = head[startIndex...]
+        var window = sentence.trimmingCharacters(in: .whitespaces)
+        var windowStart = head.utf16.distance(from: head.startIndex, to: startIndex)
+        // Trimming dropped leading whitespace: the window starts after it.
+        windowStart += sentence.unicodeScalars
+            .prefix { CharacterSet.whitespaces.contains($0) }
+            .reduce(0) { $0 + $1.utf16.count }
         if window.count > 240 {
-            window = String(window.suffix(240))
+            let truncated = String(window.suffix(240))
+            windowStart += window.utf16.count - truncated.utf16.count
+            window = truncated
         }
-        // Compute the absolute offset where the window starts in `text`.
-        let prefixLen = head.distance(from: head.startIndex, to: startIndex)
-        return (window, prefixLen)
+        return (window, windowStart)
     }
 
     /// Synchronously invokes NSSpellChecker (it has a sync API for short text)

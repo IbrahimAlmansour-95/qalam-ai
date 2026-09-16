@@ -10,9 +10,16 @@ final class AppState {
     var settingsWindowController: NSWindowController?
     var onboardingWindowController: NSWindowController?
 
+    /// Tab / profile to show when Settings opens (or is already open).
+    /// `SettingsView` and `AppsSettingsView` apply these, then clear them.
+    var requestedSettingsTab: SettingsTab?
+    var requestedProfileID: String?
+
     private init() {}
 
-    func showSettings() {
+    func showSettings(tab: SettingsTab? = nil, profileID: String? = nil) {
+        if let tab { requestedSettingsTab = tab }
+        if let profileID { requestedProfileID = profileID }
         if settingsWindowController == nil {
             settingsWindowController = SettingsWindowController.make()
         }

@@ -99,6 +99,7 @@ final class WritingModeStore {
         )
         customModes.append(m)
         save()
+        SyncHooks.changed(SyncKey.mode(m.id))
     }
 
     func update(_ mode: WritingMode) {
@@ -107,11 +108,29 @@ final class WritingModeStore {
         else { return }
         customModes[idx] = mode
         save()
+        SyncHooks.changed(SyncKey.mode(mode.id))
     }
 
     func delete(_ mode: WritingMode) {
         guard !mode.isBuiltIn else { return }
         customModes.removeAll { $0.id == mode.id }
+        save()
+        SyncHooks.deleted(SyncKey.mode(mode.id))
+    }
+
+    /// Writes custom modes that came from another Mac (built-ins are never
+    /// synced — every install has the same ones).
+    func applySyncItems(_ upserts: [WritingMode], deletions: [String]) {
+        for id in deletions {
+            customModes.removeAll { $0.id == id }
+        }
+        for incoming in upserts where !incoming.isBuiltIn {
+            if let idx = customModes.firstIndex(where: { $0.id == incoming.id }) {
+                customModes[idx] = incoming
+            } else {
+                customModes.append(incoming)
+            }
+        }
         save()
     }
 

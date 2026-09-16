@@ -12,7 +12,13 @@ final class UserPreferences {
         didSet { defaults.set(isEnabled, forKey: Keys.isEnabled) }
     }
     var activeModelTag: String {
-        didSet { defaults.set(activeModelTag, forKey: Keys.activeModelTag) }
+        didSet {
+            defaults.set(activeModelTag, forKey: Keys.activeModelTag)
+            // Unload the previous model and pre-load the new one.
+            if oldValue != activeModelTag {
+                ModelManager.shared.activeModelDidChange(from: oldValue)
+            }
+        }
     }
     var suggestionDelayMs: Int {
         didSet { defaults.set(suggestionDelayMs, forKey: Keys.suggestionDelayMs) }
@@ -20,9 +26,10 @@ final class UserPreferences {
     var triggerThreshold: Int {
         didSet { defaults.set(triggerThreshold, forKey: Keys.triggerThreshold) }
     }
-    var excludedBundleIDs: [String] {
-        didSet { defaults.set(excludedBundleIDs, forKey: Keys.excludedBundleIDs) }
-    }
+    /// Legacy (≤1.3.x). Read once by ProfileStore migration. Exclusions now
+    /// live in per-app profiles; this is never written again, so the key
+    /// stays on disk untouched for a downgrade.
+    private(set) var excludedBundleIDs: [String]
     var hasCompletedOnboarding: Bool {
         didSet { defaults.set(hasCompletedOnboarding, forKey: Keys.hasCompletedOnboarding) }
     }
@@ -134,6 +141,148 @@ final class UserPreferences {
         didSet { defaults.set(ghostVerticalOffset, forKey: Keys.ghostVerticalOffset) }
     }
 
+    /// Free text about the user / how they write, added to every suggestion
+    /// request (per-app and per-site instructions are appended). The UI caps
+    /// it at `ProfileStore.globalInstructionsLimit` characters.
+    var customInstructions: String {
+        didSet {
+            defaults.set(customInstructions, forKey: Keys.customInstructions)
+            // Empty instructions are not synced at all, so clearing them
+            // reads as a deletion on the other Mac (and a Mac that never
+            // wrote any can't wipe one that did).
+            if customInstructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                SyncHooks.deleted(SyncKey.customInstructions)
+            } else {
+                SyncHooks.changed(SyncKey.customInstructions)
+            }
+        }
+    }
+
+    // MARK: - Sync (iCloud Drive, off by default)
+
+    /// Keep snippets, modes, app/site settings, custom instructions and My
+    /// Info in step with the user's other Macs through an encrypted file in
+    /// iCloud Drive. Nothing is touched under Mobile Documents while this is
+    /// off.
+    var syncEnabled: Bool {
+        didSet { defaults.set(syncEnabled, forKey: Keys.syncEnabled) }
+    }
+
+    /// Also sync the encrypted writing samples (a second, separate opt-in —
+    /// these are the most personal thing QalamAI stores).
+    var syncIncludePersonalization: Bool {
+        didSet { defaults.set(syncIncludePersonalization, forKey: Keys.syncIncludePersonalization) }
+    }
+
+    // MARK: - Display
+
+    /// What to show when the caret position can't be read (Electron canvas
+    /// editors and the like): a bubble anchored to the field, or nothing.
+    var caretUnavailableBehavior: CaretUnavailableBehavior {
+        didSet {
+            defaults.set(caretUnavailableBehavior.rawValue, forKey: Keys.caretUnavailableBehavior)
+            OverlayCoordinator.shared.invalidate()
+        }
+    }
+
+    /// Small QalamAI badge next to the focused text field (off by default).
+    var showFieldButton: Bool {
+        didSet {
+            defaults.set(showFieldButton, forKey: Keys.showFieldButton)
+            if !showFieldButton { FieldButtonPanel.shared.hide() }
+        }
+    }
+
+    // MARK: - Shortcuts
+
+    /// What Esc does while a suggestion is visible. Default: dismiss only.
+    var escBehavior: EscBehavior {
+        didSet { defaults.set(escBehavior.rawValue, forKey: Keys.escBehavior) }
+    }
+    /// ⌘⇧Space pauses / resumes suggestions everywhere.
+    var shortcutPauseEnabled: Bool {
+        didSet { defaults.set(shortcutPauseEnabled, forKey: Keys.shortcutPauseEnabled) }
+    }
+    /// ⌃ + the key above Tab asks for a suggestion right away.
+    var shortcutForceActivateEnabled: Bool {
+        didSet { defaults.set(shortcutForceActivateEnabled, forKey: Keys.shortcutForceActivateEnabled) }
+    }
+    /// ⌃⌥⌘ + the key above Tab pauses the frontmost app for 10 minutes.
+    var shortcutAppToggleEnabled: Bool {
+        didSet { defaults.set(shortcutAppToggleEnabled, forKey: Keys.shortcutAppToggleEnabled) }
+    }
+    /// While a suggestion is visible, the key above Tab accepts all of it.
+    /// OFF by default: on the Arabic layout that key types ذ, and swallowing
+    /// it unasked would stop the user typing that letter.
+    var acceptAllKeyAboveTab: Bool {
+        didSet { defaults.set(acceptAllKeyAboveTab, forKey: Keys.acceptAllKeyAboveTab) }
+    }
+    /// ⌥\ shows a short list of other words that could come next.
+    var shortcutAlternativesEnabled: Bool {
+        didSet { defaults.set(shortcutAlternativesEnabled, forKey: Keys.shortcutAlternativesEnabled) }
+    }
+
+    // MARK: - Suggestion behaviour
+
+    /// Suggest while there is still text after the cursor on the same line.
+    /// On by default — that is what QalamAI has always done.
+    var midLineCompletion: Bool {
+        didSet { defaults.set(midLineCompletion, forKey: Keys.midLineCompletion) }
+    }
+
+    /// Open the alternatives list by itself after a short pause in typing.
+    var alternativesAutoShow: Bool {
+        didSet {
+            defaults.set(alternativesAutoShow, forKey: Keys.alternativesAutoShow)
+            if !alternativesAutoShow { AlternativesProvider.shared.close() }
+        }
+    }
+
+    /// How a spelling / grammar fix is drawn. Neither style edits the text on
+    /// its own — the accept key still applies the fix.
+    var autocorrectStyle: AutocorrectStyle {
+        didSet {
+            defaults.set(autocorrectStyle.rawValue, forKey: Keys.autocorrectStyle)
+            OverlayCoordinator.shared.invalidate()
+        }
+    }
+
+    // MARK: - Personalization
+
+    /// Keep an encrypted local copy of what the user writes, so completions
+    /// can sound like them. Off by default.
+    var recordWritingEnabled: Bool {
+        didSet {
+            defaults.set(recordWritingEnabled, forKey: Keys.recordWritingEnabled)
+            WritingRecorder.shared.settingsChanged()
+            if recordWritingEnabled {
+                // First time on: start using what we learn, at a middle
+                // setting. A user who turned it back off keeps their choice.
+                if personalizationStrength == .off { personalizationStrength = .medium }
+                Task.detached { await PersonalizationStore.shared.loadIfNeeded() }
+            }
+        }
+    }
+
+    /// Which writing is kept: only text where a suggestion was accepted, or
+    /// everything typed in fields QalamAI works in.
+    var recordWritingMode: RecordWritingMode {
+        didSet {
+            defaults.set(recordWritingMode.rawValue, forKey: Keys.recordWritingMode)
+            WritingRecorder.shared.settingsChanged()
+        }
+    }
+
+    /// How much of the user's own writing is fed back into the prompt.
+    var personalizationStrength: PersonalizationStrength {
+        didSet {
+            defaults.set(personalizationStrength.rawValue, forKey: Keys.personalizationStrength)
+            if personalizationStrength != .off {
+                Task.detached { await PersonalizationStore.shared.loadIfNeeded() }
+            }
+        }
+    }
+
     private init() {
         defaults.register(defaults: [
             Keys.isEnabled: true,
@@ -160,6 +309,23 @@ final class UserPreferences {
             Keys.appearance: "system",
             Keys.ghostSizeScale: 1.0,
             Keys.ghostVerticalOffset: 0.0,
+            Keys.customInstructions: "",
+            Keys.caretUnavailableBehavior: CaretUnavailableBehavior.bubble.rawValue,
+            Keys.showFieldButton: false,
+            Keys.escBehavior: EscBehavior.dismissOnly.rawValue,
+            Keys.shortcutPauseEnabled: true,
+            Keys.shortcutForceActivateEnabled: true,
+            Keys.shortcutAppToggleEnabled: true,
+            Keys.acceptAllKeyAboveTab: false,
+            Keys.shortcutAlternativesEnabled: true,
+            Keys.midLineCompletion: true,
+            Keys.alternativesAutoShow: false,
+            Keys.autocorrectStyle: AutocorrectStyle.inline.rawValue,
+            Keys.recordWritingEnabled: false,
+            Keys.recordWritingMode: RecordWritingMode.acceptedOnly.rawValue,
+            Keys.personalizationStrength: PersonalizationStrength.off.rawValue,
+            Keys.syncEnabled: false,
+            Keys.syncIncludePersonalization: false,
             // DO NOT register firstLaunchDate as a fallback — register's
             // value shifts every launch (it's a fresh Date()), which masks
             // the on-disk read with a non-zero in-memory default and the
@@ -190,6 +356,27 @@ final class UserPreferences {
         self.appearance              = defaults.string(forKey: Keys.appearance) ?? "system"
         self.ghostSizeScale          = defaults.object(forKey: Keys.ghostSizeScale) as? Double ?? 1.0
         self.ghostVerticalOffset     = defaults.object(forKey: Keys.ghostVerticalOffset) as? Double ?? 0.0
+        self.customInstructions      = defaults.string(forKey: Keys.customInstructions) ?? ""
+        self.caretUnavailableBehavior = CaretUnavailableBehavior(
+            rawValue: defaults.string(forKey: Keys.caretUnavailableBehavior) ?? "") ?? .bubble
+        self.showFieldButton         = defaults.bool(forKey: Keys.showFieldButton)
+        self.escBehavior             = EscBehavior(rawValue: defaults.string(forKey: Keys.escBehavior) ?? "") ?? .dismissOnly
+        self.shortcutPauseEnabled    = defaults.bool(forKey: Keys.shortcutPauseEnabled)
+        self.shortcutForceActivateEnabled = defaults.bool(forKey: Keys.shortcutForceActivateEnabled)
+        self.shortcutAppToggleEnabled = defaults.bool(forKey: Keys.shortcutAppToggleEnabled)
+        self.acceptAllKeyAboveTab    = defaults.bool(forKey: Keys.acceptAllKeyAboveTab)
+        self.shortcutAlternativesEnabled = defaults.bool(forKey: Keys.shortcutAlternativesEnabled)
+        self.midLineCompletion       = defaults.bool(forKey: Keys.midLineCompletion)
+        self.alternativesAutoShow    = defaults.bool(forKey: Keys.alternativesAutoShow)
+        self.autocorrectStyle        = AutocorrectStyle(
+            rawValue: defaults.string(forKey: Keys.autocorrectStyle) ?? "") ?? .inline
+        self.recordWritingEnabled    = defaults.bool(forKey: Keys.recordWritingEnabled)
+        self.recordWritingMode       = RecordWritingMode(
+            rawValue: defaults.string(forKey: Keys.recordWritingMode) ?? "") ?? .acceptedOnly
+        self.personalizationStrength = PersonalizationStrength(
+            rawValue: defaults.string(forKey: Keys.personalizationStrength) ?? "") ?? .off
+        self.syncEnabled             = defaults.bool(forKey: Keys.syncEnabled)
+        self.syncIncludePersonalization = defaults.bool(forKey: Keys.syncIncludePersonalization)
         if let raw = defaults.object(forKey: Keys.snoozeUntil) as? Double {
             self.snoozeUntil = Date(timeIntervalSince1970: raw)
         } else {
@@ -261,6 +448,23 @@ final class UserPreferences {
         static let appearance              = "qalam.appearance"
         static let ghostSizeScale          = "qalam.ghostSizeScale"
         static let ghostVerticalOffset     = "qalam.ghostVerticalOffset"
+        static let customInstructions      = "qalam.customInstructions"
+        static let caretUnavailableBehavior = "qalam.caretUnavailableBehavior"
+        static let showFieldButton         = "qalam.showFieldButton"
+        static let escBehavior             = "qalam.escBehavior"
+        static let shortcutPauseEnabled    = "qalam.shortcutPauseEnabled"
+        static let shortcutForceActivateEnabled = "qalam.shortcutForceActivateEnabled"
+        static let shortcutAppToggleEnabled = "qalam.shortcutAppToggleEnabled"
+        static let acceptAllKeyAboveTab    = "qalam.acceptAllKeyAboveTab"
+        static let shortcutAlternativesEnabled = "qalam.shortcutAlternativesEnabled"
+        static let midLineCompletion       = "qalam.midLineCompletion"
+        static let alternativesAutoShow    = "qalam.alternativesAutoShow"
+        static let autocorrectStyle        = "qalam.autocorrectStyle"
+        static let recordWritingEnabled    = "qalam.recordWritingEnabled"
+        static let recordWritingMode       = "qalam.recordWritingMode"
+        static let personalizationStrength = "qalam.personalizationStrength"
+        static let syncEnabled             = "qalam.syncEnabled"
+        static let syncIncludePersonalization = "qalam.syncIncludePersonalization"
         static let contextMigrationV1      = "qalam.contextMigrationV1"
         static let terminalExclusionRevertV1 = "qalam.terminalExclusionRevertV1"
     }

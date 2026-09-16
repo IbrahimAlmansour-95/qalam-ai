@@ -6,6 +6,11 @@ struct MenuBarPopoverView: View {
     @State private var axMonitor = AccessibilityPermissionMonitor.shared
     @State private var updater = UpdateChecker.shared
     @State private var l10n = LocalizationStore.shared
+    @State private var secureInput = SecureInputMonitor.shared
+    @State private var profiles = ProfileStore.shared
+    @State private var pauses = TemporaryPauseStore.shared
+    /// Ticks with the refresh timer so "N min left" counts down.
+    @State private var now = Date()
     @State private var statsSnapshot = UsageLogger.Snapshot(
         wordsCompletedToday: 0, keystrokesSaved: 0, suggestionsShown: 0
     )
@@ -25,8 +30,20 @@ struct MenuBarPopoverView: View {
                     accessibilityWarning
                     QDivider().padding(.horizontal, 0)
                 }
+                if secureInput.isActive {
+                    secureInputBanner
+                    QDivider().padding(.horizontal, 0)
+                }
+                if engineFailed {
+                    engineFailedRow
+                    QDivider().padding(.horizontal, 0)
+                }
                 enableRow
                 QDivider().padding(.horizontal, 0)
+                if let app = profiles.lastExternalApp {
+                    appQuickSection(app)
+                    QDivider().padding(.horizontal, 0)
+                }
                 snoozeSection
                 QDivider().padding(.horizontal, 0)
                 modeSwitcherSection
@@ -39,7 +56,11 @@ struct MenuBarPopoverView: View {
                 footer
             }
         }
+        // Width is fixed; the height follows the content (the popover uses
+        // `.preferredContentSize`), with a floor so the layout never collapses
+        // if a section reports no ideal height.
         .frame(width: 320)
+        .frame(minHeight: 420, alignment: .top)
         .background(QColors.backgroundPrimary)
         .environment(\.layoutDirection, l10n.current.layoutDirection)
         .onAppear { startRefresh() }
@@ -102,6 +123,65 @@ struct MenuBarPopoverView: View {
         .background(QColors.warning.opacity(0.06))
     }
 
+    /// While Secure Input is on the keystroke tap sees no keys, so nothing can
+    /// be suggested — say so instead of looking broken. Kept compact: the
+    /// popover has a fixed height.
+    private var secureInputBanner: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(QColors.warning)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L.t(.popoverSecureInputPaused))
+                    .font(QFonts.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(QColors.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(L.t(.popoverSecureInputHelp))
+                    .font(QFonts.caption)
+                    .foregroundStyle(QColors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, QSpacing.l)
+        .padding(.vertical, QSpacing.s)
+        .background(QColors.warning.opacity(0.06))
+    }
+
+    /// The bundled engine crashed repeatedly and auto-restart gave up. Only
+    /// shown while it really is down.
+    private var engineFailed: Bool {
+        modelManager.engineSupervisor == .failed && modelManager.ollamaState != .running
+    }
+
+    private var engineRestarting: Bool {
+        if case .restarting = modelManager.engineSupervisor {
+            return modelManager.ollamaState != .running
+        }
+        return false
+    }
+
+    private var engineFailedRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(QColors.destructive)
+            Text(L.t(.popoverEngineFailedHelp))
+                .font(QFonts.caption)
+                .foregroundStyle(QColors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            QButton(title: L.t(.popoverEngineRetry), icon: "arrow.clockwise",
+                    style: .primary, size: .small) {
+                Task { await OllamaService.shared.retryAfterFailure() }
+            }
+        }
+        .padding(.horizontal, QSpacing.l)
+        .padding(.vertical, QSpacing.s)
+        .background(QColors.destructive.opacity(0.06))
+    }
+
     // MARK: - Sections
 
     private var header: some View {
@@ -117,10 +197,36 @@ struct MenuBarPopoverView: View {
         .padding(.vertical, QSpacing.m)
     }
 
+    /// The frontmost app is paused for a while (⌘⇧Space on an app, or the
+    /// field button's "Pause 10 min").
+    private var frontmostAppPaused: Bool {
+        guard let app = profiles.lastExternalApp else { return false }
+        if let until = pauses.until(bundleID: app.bundleID) { return until > now }
+        return false
+    }
+
+    /// The frontmost app (or the site open in it) is switched off in its
+    /// profile.
+    private var frontmostAppOff: Bool {
+        guard let app = profiles.lastExternalApp else { return false }
+        let host = KnownApps.isBrowser(app.bundleID) ? profiles.lastExternalHost : nil
+        return profiles.resolve(bundleID: app.bundleID, host: host).activation == .off
+    }
+
+    /// One tag for the whole app state, in the order the user would fix them.
+    /// Kept to a couple of words so a long app name can never clip the header:
+    /// which app is paused or off is spelled out in `appQuickSection` below.
     private var statusText: String {
         if !axMonitor.isGranted { return L.t(.popoverStatusNeedsAccess) }
+        if secureInput.isActive { return L.t(.popoverStatusPaused) }
+        if engineFailed { return L.t(.popoverStatusEngineFailed) }
+        if engineRestarting { return L.t(.popoverStatusRestarting) }
+        if !prefs.isEnabled { return L.t(.popoverStatusPaused) }
+        if prefs.isSnoozed { return L.t(.popoverStatusSnoozed) }
+        if frontmostAppPaused { return L.t(.popoverStatusPaused) }
+        if frontmostAppOff { return L.t(.appsOff) }
         switch modelManager.ollamaState {
-        case .running:     return L.t(prefs.isEnabled ? .popoverStatusActive : .popoverStatusPaused)
+        case .running:     return L.t(.popoverStatusActive)
         case .starting:    return L.t(.popoverStatusStarting)
         case .stopped:     return L.t(.popoverStatusStopped)
         case .notInstalled: return L.t(.popoverStatusInstallOllama)
@@ -130,8 +236,13 @@ struct MenuBarPopoverView: View {
 
     private var statusStyle: QTagStyle {
         if !axMonitor.isGranted { return .destructive }
+        if secureInput.isActive { return .warning }
+        if engineFailed { return .destructive }
+        if engineRestarting { return .warning }
+        if !prefs.isEnabled || prefs.isSnoozed { return .warning }
+        if frontmostAppPaused || frontmostAppOff { return .warning }
         switch modelManager.ollamaState {
-        case .running:      return prefs.isEnabled ? .success : .warning
+        case .running:      return .success
         case .starting:     return .warning
         case .stopped, .notInstalled: return .destructive
         case .unknown:      return .neutral
@@ -147,6 +258,78 @@ struct MenuBarPopoverView: View {
         }
         .padding(.horizontal, QSpacing.l)
         .padding(.vertical, QSpacing.m)
+    }
+
+    /// Quick per-app (and per-site, in a browser) switch for the app the
+    /// user was just in. Off ↔ inherit on that app's / site's profile; the
+    /// rest of the settings live in the Apps tab.
+    private func appQuickSection(_ app: ExternalAppRef) -> some View {
+        let appProfile = profiles.appProfile(bundleID: app.bundleID)
+        let appOff = appProfile?.activation == .off
+        let host = KnownApps.isBrowser(app.bundleID) ? profiles.lastExternalHost : nil
+        let pausedUntil = pauses.until(bundleID: app.bundleID)
+        return VStack(alignment: .leading, spacing: 8) {
+            QToggle(isOn: Binding(
+                get: { !appOff },
+                set: { on in
+                    let id = ProfileStore.shared.ensureApp(bundleID: app.bundleID, name: app.name).id
+                    ProfileStore.shared.update(id: id) { p in
+                        if on {
+                            if p.activation == .off { p.activation = nil }
+                        } else {
+                            p.activation = .off
+                        }
+                    }
+                }
+            ), label: String(format: L.t(.popoverSuggestInAppFmt), app.name))
+            // A site switch only makes sense while the browser itself is on.
+            if let host, !appOff {
+                let siteOff = profiles.resolve(bundleID: app.bundleID, host: host).activation == .off
+                QToggle(isOn: Binding(
+                    get: { !siteOff },
+                    set: { on in
+                        let store = ProfileStore.shared
+                        let id = store.ensureDomain(host: host).id
+                        if on {
+                            store.update(id: id) { p in
+                                if p.activation == .off { p.activation = nil }
+                            }
+                            // Still off because a parent domain is: turn it on
+                            // for this host only, leaving the parent's other
+                            // subdomains alone.
+                            if store.resolve(bundleID: app.bundleID, host: host).activation == .off {
+                                store.update(id: id) { $0.activation = .alwaysOn }
+                            }
+                        } else {
+                            store.update(id: id) { $0.activation = .off }
+                        }
+                    }
+                ), label: String(format: L.t(.popoverSuggestOnSiteFmt), host))
+            }
+            if let until = pausedUntil, until > now {
+                HStack(spacing: 6) {
+                    Image(systemName: "pause.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(QColors.warning)
+                    Text(String(format: L.t(.popoverAppPausedFmt), app.name,
+                                max(1, Int((until.timeIntervalSince(now) / 60).rounded(.up)))))
+                        .font(QFonts.caption)
+                        .foregroundStyle(QColors.textSecondary)
+                        .lineLimit(1)
+                    Spacer()
+                    Button {
+                        TemporaryPauseStore.shared.resume(bundleID: app.bundleID)
+                    } label: {
+                        Text(L.t(.popoverSnoozeResume))
+                            .font(QFonts.caption)
+                            .foregroundStyle(QColors.accent)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal, QSpacing.l)
+        .padding(.vertical, QSpacing.s)
     }
 
     private var snoozeSection: some View {
@@ -354,9 +537,11 @@ struct MenuBarPopoverView: View {
         Task {
             self.statsSnapshot = await UsageLogger.shared.snapshot()
         }
+        now = Date()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
             Task { @MainActor in
                 self.statsSnapshot = await UsageLogger.shared.snapshot()
+                self.now = Date()
             }
         }
     }
