@@ -72,6 +72,10 @@ struct PrivacySettingsView: View {
                             diagnosticsCopied = false
                         }
                     }
+                    QButton(title: L.t(.diagShowLogs), icon: "folder",
+                            style: .secondary, size: .small) {
+                        Diagnostics.revealLogs()
+                    }
                     Spacer()
                 }
             }

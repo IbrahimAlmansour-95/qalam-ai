@@ -5,13 +5,6 @@ struct GeneralSettingsView: View {
     @State private var prefs = UserPreferences.shared
     @State private var l10n = LocalizationStore.shared
     @State private var updater = UpdateChecker.shared
-    @State private var newExcluded: String = ""
-    @State private var availableApps: [RunningApp] = []
-
-    struct RunningApp: Identifiable, Hashable {
-        let id: String
-        let name: String
-    }
 
     var body: some View {
         ScrollView {
@@ -20,6 +13,7 @@ struct GeneralSettingsView: View {
                 languageCard
                 appearanceCard
                 ghostCalibrationCard
+                displayCard
                 engineCard
                 togglesCard
                 acceptKeyCard
@@ -32,7 +26,6 @@ struct GeneralSettingsView: View {
             .padding(QSpacing.xl)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .onAppear { loadRunningApps() }
     }
 
     private var header: some View {
@@ -219,6 +212,63 @@ struct GeneralSettingsView: View {
                 }
             }
         }
+    }
+
+    /// What is shown when inline ghost text can't be placed, plus the optional
+    /// badge next to the focused field.
+    private var displayCard: some View {
+        QCard {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(L.t(.generalDisplay))
+                        .font(QFonts.bodyMed)
+                        .foregroundStyle(QColors.textPrimary)
+                    Text(L.t(.generalCaretUnavailable))
+                        .font(QFonts.caption)
+                        .foregroundStyle(QColors.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 0) {
+                        caretUnavailableSegment(L.t(.generalCaretUnavailableBubble), value: .bubble)
+                        caretUnavailableSegment(L.t(.generalCaretUnavailableHide), value: .hide)
+                    }
+                    .padding(2)
+                    .background(QColors.backgroundSecondary)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: QRadius.small + 1, style: .continuous)
+                            .strokeBorder(QColors.borderSubtle, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: QRadius.small + 1, style: .continuous))
+                    Text(L.t(.generalCaretUnavailableHelp))
+                        .font(QFonts.caption)
+                        .foregroundStyle(QColors.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                QDivider()
+                contextToggle(L.t(.generalFieldButton), help: L.t(.generalFieldButtonHelp),
+                              isOn: Binding(get: { prefs.showFieldButton },
+                                            set: { prefs.showFieldButton = $0 }))
+            }
+        }
+    }
+
+    private func caretUnavailableSegment(_ title: String, value: CaretUnavailableBehavior) -> some View {
+        let active = prefs.caretUnavailableBehavior == value
+        return Button {
+            withAnimation(QAnimation.quick) { prefs.caretUnavailableBehavior = value }
+        } label: {
+            Text(title)
+                .font(QFonts.caption)
+                .fontWeight(.medium)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(active ? .white : QColors.textSecondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(active ? QColors.accent : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: QRadius.small, style: .continuous))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var appearanceCard: some View {
@@ -410,8 +460,49 @@ struct GeneralSettingsView: View {
                     get: { prefs.autoGrammarEnabled },
                     set: { prefs.autoGrammarEnabled = $0 }
                 ), label: L.t(.generalSuggestGrammar))
+                QDivider()
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(L.t(.generalAutocorrectStyle))
+                        .font(QFonts.bodyMed)
+                        .foregroundStyle(QColors.textPrimary)
+                    HStack(spacing: 0) {
+                        autocorrectStyleSegment(L.t(.generalAutocorrectStyleInline), value: .inline)
+                        autocorrectStyleSegment(L.t(.generalAutocorrectStyleArrow), value: .arrow)
+                    }
+                    .padding(2)
+                    .background(QColors.backgroundSecondary)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: QRadius.small + 1, style: .continuous)
+                            .strokeBorder(QColors.borderSubtle, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: QRadius.small + 1, style: .continuous))
+                    Text(L.t(.generalAutocorrectStyleHelp))
+                        .font(QFonts.caption)
+                        .foregroundStyle(QColors.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
+    }
+
+    private func autocorrectStyleSegment(_ title: String, value: AutocorrectStyle) -> some View {
+        let active = prefs.autocorrectStyle == value
+        return Button {
+            withAnimation(QAnimation.quick) { prefs.autocorrectStyle = value }
+        } label: {
+            Text(title)
+                .font(QFonts.caption)
+                .fontWeight(.medium)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(active ? .white : QColors.textSecondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(active ? QColors.accent : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: QRadius.small, style: .continuous))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var suggestionLengthCard: some View {
@@ -421,6 +512,9 @@ struct GeneralSettingsView: View {
         // Clamp the stored value so a model with a smaller ceiling can't show
         // a slider knob past the end of the track.
         let clamped = max(1, min(prefs.maxSuggestionWords, modelMax))
+
+        let preset = CompletionLength.from(words: clamped, modelMax: modelMax)
+        let longAvailable = modelMax > 5
 
         return QCard {
             VStack(alignment: .leading, spacing: 14) {
@@ -433,6 +527,32 @@ struct GeneralSettingsView: View {
                         Text("\(clamped) \(L.t(.generalMaxWordsValue))")
                             .font(QFonts.mono)
                             .foregroundStyle(QColors.textPrimary)
+                    }
+                    HStack(spacing: 0) {
+                        completionLengthSegment(L.t(.generalCompletionShort), value: .short,
+                                                active: preset, modelMax: modelMax, enabled: true)
+                        completionLengthSegment(L.t(.generalCompletionMedium), value: .medium,
+                                                active: preset, modelMax: modelMax, enabled: true)
+                        completionLengthSegment(L.t(.generalCompletionLong), value: .long,
+                                                active: preset, modelMax: modelMax,
+                                                enabled: longAvailable)
+                    }
+                    .padding(2)
+                    .background(QColors.backgroundSecondary)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: QRadius.small + 1, style: .continuous)
+                            .strokeBorder(QColors.borderSubtle, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: QRadius.small + 1, style: .continuous))
+                    Text(L.t(.generalCompletionLengthHelp))
+                        .font(QFonts.caption)
+                        .foregroundStyle(QColors.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !longAvailable {
+                        Text(L.t(.generalCompletionLongUnavailable))
+                            .font(QFonts.caption)
+                            .foregroundStyle(QColors.textTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Slider(
                         value: Binding(
@@ -457,6 +577,15 @@ struct GeneralSettingsView: View {
                         .foregroundStyle(QColors.textTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                QDivider()
+                contextToggle(L.t(.generalMidLine), help: L.t(.generalMidLineHelp),
+                              isOn: Binding(get: { prefs.midLineCompletion },
+                                            set: { prefs.midLineCompletion = $0 }))
+                QDivider()
+                contextToggle(L.t(.generalAlternativesAutoShow),
+                              help: L.t(.generalAlternativesAutoShowHelp),
+                              isOn: Binding(get: { prefs.alternativesAutoShow },
+                                            set: { prefs.alternativesAutoShow = $0 }))
             }
         }
         // Auto-clamp on appear in case the active model changed since last
@@ -466,6 +595,38 @@ struct GeneralSettingsView: View {
                 prefs.maxSuggestionWords = min(modelMax, max(1, prefs.maxSuggestionWords))
             }
         }
+    }
+
+    /// The three length presets write the SAME `maxSuggestionWords` the slider
+    /// below does — there is no second stored value to fall out of step.
+    private func completionLengthSegment(_ title: String,
+                                         value: CompletionLength,
+                                         active: CompletionLength,
+                                         modelMax: Int,
+                                         enabled: Bool) -> some View {
+        let isActive = active == value && enabled
+        return Button {
+            guard enabled else { return }
+            withAnimation(QAnimation.quick) {
+                prefs.maxSuggestionWords = value.words(modelMax: modelMax)
+            }
+        } label: {
+            Text(title)
+                .font(QFonts.caption)
+                .fontWeight(.medium)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(isActive ? .white
+                                 : (enabled ? QColors.textSecondary : QColors.textTertiary))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(isActive ? QColors.accent : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: QRadius.small, style: .continuous))
+                .opacity(enabled ? 1 : 0.5)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
     }
 
     private var tuningCard: some View {
@@ -524,88 +685,27 @@ struct GeneralSettingsView: View {
         }
     }
 
+    /// Exclusions moved to per-app profiles (Apps tab); this card points
+    /// there.
     private var excludedAppsCard: some View {
         QCard {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(L.t(.generalExcludedApps))
                         .font(QFonts.bodyMed)
                         .foregroundStyle(QColors.textPrimary)
-                    Spacer()
-                    Menu {
-                        ForEach(availableApps) { app in
-                            Button(app.name) {
-                                if !prefs.excludedBundleIDs.contains(app.id) {
-                                    prefs.excludedBundleIDs.append(app.id)
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 3) {
-                            Image(systemName: "plus")
-                            Text(L.t(.generalAddApp))
-                        }
-                        .font(QFonts.caption)
-                        .foregroundStyle(QColors.accent)
-                    }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-                }
-
-                if prefs.excludedBundleIDs.isEmpty {
-                    Text(L.t(.generalExcludedAppsHelp))
+                    Text(L.t(.appsManageHint))
                         .font(QFonts.caption)
                         .foregroundStyle(QColors.textTertiary)
-                        .padding(.vertical, 8)
-                } else {
-                    VStack(spacing: 6) {
-                        ForEach(prefs.excludedBundleIDs, id: \.self) { id in
-                            excludedRow(id)
-                        }
-                    }
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                QButton(title: L.t(.appsOpen), icon: "square.grid.2x2",
+                        style: .secondary, size: .small) {
+                    AppState.shared.showSettings(tab: .apps)
                 }
             }
         }
-    }
-
-    private func excludedRow(_ bundleID: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "app.dashed").foregroundStyle(QColors.textTertiary)
-            Text(displayName(forBundle: bundleID))
-                .font(QFonts.body)
-                .foregroundStyle(QColors.textPrimary)
-            Text(bundleID)
-                .font(QFonts.caption)
-                .foregroundStyle(QColors.textTertiary)
-            Spacer()
-            Button {
-                prefs.excludedBundleIDs.removeAll { $0 == bundleID }
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(QColors.textTertiary)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(QColors.backgroundElevated)
-        .clipShape(RoundedRectangle(cornerRadius: QRadius.small, style: .continuous))
-    }
-
-    private func displayName(forBundle id: String) -> String {
-        availableApps.first(where: { $0.id == id })?.name ?? id
-    }
-
-    private func loadRunningApps() {
-        let apps = NSWorkspace.shared.runningApplications
-            .filter { $0.activationPolicy == .regular }
-            .compactMap { app -> RunningApp? in
-                guard let id = app.bundleIdentifier else { return nil }
-                let name = app.localizedName ?? id
-                return RunningApp(id: id, name: name)
-            }
-            .sorted { $0.name.lowercased() < $1.name.lowercased() }
-        availableApps = apps
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
@@ -616,7 +716,7 @@ struct GeneralSettingsView: View {
                 try SMAppService.mainApp.unregister()
             }
         } catch {
-            NSLog("QalamAI: Launch at login update failed: \(error.localizedDescription)")
+            QLog.error(.app, "launch at login update failed (\((error as NSError).domain) \((error as NSError).code))")
         }
     }
 }

@@ -16,6 +16,8 @@ final class ModelManager {
     private(set) var activeDownloads: [String: Double] = [:]   // tag → fraction
     private(set) var downloadStatusText: [String: String] = [:]
     private(set) var lastError: String?
+    /// Auto-restart state of the bundled engine (menu bar status / Retry).
+    private(set) var engineSupervisor: EngineSupervisorState = .idle
 
     var detectedRAMGB: Double {
         Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824.0
@@ -36,6 +38,11 @@ final class ModelManager {
         }
         Task {
             await OllamaService.shared.startHealthChecks()
+        }
+        Task {
+            for await s in await OllamaService.shared.supervisorStream() {
+                engineSupervisor = s
+            }
         }
     }
 
@@ -90,20 +97,60 @@ final class ModelManager {
         let model = UserPreferences.shared.activeModelTag
         guard !model.isEmpty else { return }
         Task.detached {
-            var req = URLRequest(url: Constants.Ollama.generateURL)
-            req.httpMethod = "POST"
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            let body: [String: Any] = [
-                "model": model,
-                "prompt": " ",
-                "stream": false,
-                "think": false,
-                "keep_alive": "30m",
-                "options": ["num_predict": 1],
-            ]
-            req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-            _ = try? await URLSession.shared.data(for: req)
+            await ModelManager.warm(model: model)
         }
+    }
+
+    /// Called by `UserPreferences.activeModelTag` when the user picks another
+    /// model: frees the previous one (it would otherwise stay resident for its
+    /// 30-minute keep-alive) and pre-loads the new one, so the first
+    /// suggestion after switching doesn't pay the cold load.
+    func activeModelDidChange(from old: String) {
+        let new = UserPreferences.shared.activeModelTag
+        guard old != new, !new.isEmpty,
+              UserPreferences.shared.engine == "ollama",
+              ollamaState == .running
+        else { return }
+        Task.detached {
+            if !old.isEmpty {
+                await ModelManager.unload(model: old)
+            }
+            await ModelManager.warm(model: new)
+        }
+    }
+
+    private nonisolated static func warm(model: String) async {
+        var req = URLRequest(url: Constants.Ollama.generateURL)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // A cold load of a large model can take a while; don't hang forever.
+        req.timeoutInterval = LLMDeadline.prewarm
+        let body: [String: Any] = [
+            "model": model,
+            "prompt": " ",
+            "stream": false,
+            "think": false,
+            "keep_alive": "30m",
+            "options": ["num_predict": 1],
+        ]
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        _ = try? await URLSession.shared.data(for: req)
+    }
+
+    /// Asks Ollama to evict `model` now (`keep_alive: 0`). Errors are ignored.
+    private nonisolated static func unload(model: String) async {
+        var req = URLRequest(url: Constants.Ollama.generateURL)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.timeoutInterval = 10
+        let body: [String: Any] = [
+            "model": model,
+            "prompt": "",
+            "stream": false,
+            "keep_alive": 0,
+        ]
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        _ = try? await URLSession.shared.data(for: req)
     }
 
     private func observeInstalledModels() async {
@@ -151,11 +198,20 @@ final class ModelManager {
                     activeDownloads.removeValue(forKey: entry.ollamaTag)
                     downloadStatusText.removeValue(forKey: entry.ollamaTag)
                     _ = await OllamaService.shared.refreshInstalledModels()
+                    // Picked before it finished downloading (onboarding) —
+                    // load it now that it exists.
+                    if entry.ollamaTag == UserPreferences.shared.activeModelTag {
+                        prewarmActiveModel()
+                    }
                 case .failed(let msg):
                     lastError = msg
                     activeDownloads.removeValue(forKey: entry.ollamaTag)
                     downloadStatusText.removeValue(forKey: entry.ollamaTag)
-                    NSLog("QalamAI: download failed for %@ — %@", entry.ollamaTag, msg)
+                    // "Engine unavailable. …" carries raw engine stderr, which
+                    // must never reach the log — only its size.
+                    let logged = msg.hasPrefix("Engine unavailable.")
+                        ? "engine unavailable (\(msg.count) chars)" : msg
+                    QLog.error(.engine, "download failed for \(entry.ollamaTag) — \(logged)")
                 case .cancelled:
                     activeDownloads.removeValue(forKey: entry.ollamaTag)
                     downloadStatusText.removeValue(forKey: entry.ollamaTag)

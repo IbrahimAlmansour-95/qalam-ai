@@ -39,19 +39,58 @@ final class PersonalInfoStore {
     }
 
     func add(label: String = "", value: String = "") {
-        items.append(PersonalInfoItem(label: label, value: value))
+        let item = PersonalInfoItem(label: label, value: value)
+        items.append(item)
         save()
+        noteSync(item)
     }
 
     func update(_ item: PersonalInfoItem) {
         if let idx = items.firstIndex(where: { $0.id == item.id }) {
             items[idx] = item
             save()
+            noteSync(item)
         }
     }
 
     func delete(_ item: PersonalInfoItem) {
         items.removeAll { $0.id == item.id }
+        save()
+        SyncHooks.deleted(SyncKey.myInfo(item.id))
+    }
+
+    /// An empty field is not synced at all (every install seeds Name / Email
+    /// / Phone), so clearing one reads as a deletion on the other Mac.
+    private func noteSync(_ item: PersonalInfoItem) {
+        if item.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            SyncHooks.deleted(SyncKey.myInfo(item.id))
+        } else {
+            SyncHooks.changed(SyncKey.myInfo(item.id))
+        }
+    }
+
+    /// Writes details that came from another Mac. An incoming item that this
+    /// Mac already has (same label and value) is skipped, and one that
+    /// matches an empty seeded field fills it in instead of adding a second
+    /// row.
+    func applySyncItems(_ upserts: [PersonalInfoItem], deletions: [String]) {
+        for id in deletions {
+            items.removeAll { $0.id == id }
+        }
+        for incoming in upserts {
+            if let idx = items.firstIndex(where: { $0.id == incoming.id }) {
+                items[idx] = incoming
+            } else if items.contains(where: { $0.label == incoming.label && $0.value == incoming.value }) {
+                continue
+            } else if let idx = items.firstIndex(where: {
+                $0.label == incoming.label
+                    && $0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }) {
+                items[idx] = incoming
+            } else {
+                items.append(incoming)
+            }
+        }
         save()
     }
 

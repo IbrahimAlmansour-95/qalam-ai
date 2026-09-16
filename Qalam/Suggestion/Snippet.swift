@@ -53,17 +53,42 @@ final class SnippetStore {
         snippets.removeAll { $0.trigger == cleaned }
         snippets.append(Snippet(trigger: cleaned, expansion: expansion))
         save()
+        SyncHooks.changed(SyncKey.snippet(cleaned))
     }
 
     func update(_ snippet: Snippet) {
         if let idx = snippets.firstIndex(where: { $0.id == snippet.id }) {
+            let oldTrigger = snippets[idx].trigger
             snippets[idx] = snippet
             save()
+            // The trigger is the sync key, so renaming one is a delete plus
+            // an add as far as the other Mac is concerned.
+            SyncHooks.renamed(from: SyncKey.snippet(oldTrigger),
+                              to: SyncKey.snippet(snippet.trigger))
         }
     }
 
     func delete(_ snippet: Snippet) {
         snippets.removeAll { $0.id == snippet.id }
+        save()
+        SyncHooks.deleted(SyncKey.snippet(snippet.trigger))
+    }
+
+    /// Writes snippets that came from another Mac. Never records a local
+    /// edit — `SyncManager` stamps the metadata with the incoming version.
+    func applySyncItems(_ upserts: [Snippet], deletions: [String]) {
+        for trigger in deletions {
+            snippets.removeAll { $0.trigger == trigger }
+        }
+        for incoming in upserts {
+            if let idx = snippets.firstIndex(where: { $0.trigger == incoming.trigger }) {
+                snippets[idx] = incoming
+            } else if let idx = snippets.firstIndex(where: { $0.id == incoming.id }) {
+                snippets[idx] = incoming
+            } else {
+                snippets.append(incoming)
+            }
+        }
         save()
     }
 

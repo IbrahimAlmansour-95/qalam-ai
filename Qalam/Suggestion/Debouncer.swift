@@ -2,18 +2,22 @@ import Foundation
 
 actor Debouncer {
     private var pending: Task<Void, Never>?
-    private let interval: TimeInterval
 
-    init(intervalMs: Int) {
-        self.interval = Double(intervalMs) / 1000.0
-    }
+    init() {}
 
-    func schedule(_ action: @escaping @Sendable () async -> Void) {
+    /// Runs `action` after `delayMs` unless another `schedule`/`cancel` comes
+    /// first. The delay is passed per call so the Settings slider applies live.
+    /// Clamped to 0…2000 ms; 0 runs on the next task hop.
+    func schedule(delayMs: Int, _ action: @escaping @Sendable () async -> Void) {
         pending?.cancel()
-        let interval = self.interval
+        let delay = UInt64(min(max(delayMs, 0), 2000))
         pending = Task {
             do {
-                try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                if delay > 0 {
+                    try await Task.sleep(nanoseconds: delay * 1_000_000)
+                } else {
+                    await Task.yield()
+                }
                 try Task.checkCancellation()
                 await action()
             } catch { /* cancelled */ }
