@@ -712,7 +712,16 @@ final class SuggestionEngine {
         var screen: String? = nil
         if prefs.screenContextEnabled && axAvailable {
             let caret = AXGuard.measure(pid: frontPID) { AccessibilityMonitor.shared.caretFrame() }
-            screen = await ScreenOCRContext.shared.visualContext(around: caret)
+            // Reads only the window being typed in; nothing at all in a
+            // password field or while Secure Input is on. Both pids: a Chrome
+            // app's window is owned by the frontmost app, not the field's pid.
+            screen = await ScreenOCRContext.shared.visualContext(
+                around: caret,
+                pid: context.pid != 0 ? context.pid : (frontPID ?? 0),
+                frontPID: frontPID ?? 0,
+                bundleID: context.appBundleID,
+                isSecure: SecureInputMonitor.shared.isActive
+                    || context.role == "AXSecureTextField" || context.subrole == "AXSecureTextField")
         }
         // Personalization (off by default): a few short excerpts of the
         // user's own writing, budgeted by strength. In-memory work inside the

@@ -198,6 +198,58 @@ enum KnownApps {
         "com.sublimetext.4", "com.sublimetext.3", "com.sublimetext.2",
     ]
 
+    /// Password managers, plus Apple's Passwords and Keychain Access. Screen
+    /// context never captures while one of these is being typed in. The
+    /// third-party ids are the ones macOS's own Passwords import list names;
+    /// the vendor prefixes cover their other builds (1Password 7/8 and
+    /// betas, Dashlane's older app, Enpass, Proton Pass's desktop app), also
+    /// behind a Team ID (1Password 7 mini). Lowercased: bundle ids compare
+    /// case-insensitively.
+    private static let passwordManagers: Set<String> = [
+        "com.apple.passwords", "com.apple.keychainaccess",
+        "com.1password.1password", "com.agilebits.onepassword7",
+        "com.bitwarden.desktop", "com.lastpass.lastpass", "com.dashlane.dashlanephonefinal",
+        "org.keepassxc.keepassxc", "com.markmcguill.strongbox", "me.proton.pass.ios",
+        "com.kaspersky.kpm", "com.romainp.se-same", "com.outercorner.secrets",
+        "com.sibersystems.roboformmac", "com.keepersecurity.safari.keeperfill",
+        "com.callpod.keepermac.lite", "com.keepsolid.passwarden",
+        "com.safeincloud.safe-in-cloud.osx", "ca.jeffreyfulton.minipass", "com.mseven.msecuremac",
+    ]
+
+    private static let passwordManagerPrefixes: [String] = [
+        "com.apple.passwords.", "com.1password.", "com.agilebits.", "com.bitwarden.",
+        "com.lastpass.", "com.dashlane.", "in.sinew.", "org.keepassxc.",
+        "com.markmcguill.strongbox", "me.proton.pass.",
+    ]
+
+    static func isPasswordManager(_ id: String?) -> Bool {
+        guard let id = id?.lowercased() else { return false }
+        func matches(_ s: String) -> Bool {
+            passwordManagers.contains(s) || passwordManagerPrefixes.contains { s.hasPrefix($0) }
+        }
+        if matches(id) { return true }
+        // Helpers carrying a Team ID prefix, e.g. 1Password 7 mini
+        // ("2BUA8C4S2C.com.agilebits.onepassword7-helper").
+        if let dot = id.firstIndex(of: "."), id.distance(from: id.startIndex, to: dot) == 10,
+           id[..<dot].allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) {
+            return matches(String(id[id.index(after: dot)...]))
+        }
+        return false
+    }
+
+    /// System panels that show other apps' content: Notification Center
+    /// (banners, inline replies) and Spotlight (result previews). Screen
+    /// context never captures while one of these is being typed in.
+    /// Lowercased.
+    private static let otherAppsContentPanels: Set<String> = [
+        "com.apple.notificationcenterui", "com.apple.spotlight",
+    ]
+
+    static func showsOtherAppsContent(_ id: String?) -> Bool {
+        guard let id = id?.lowercased() else { return false }
+        return otherAppsContentPanels.contains(id)
+    }
+
     static func isBrowser(_ id: String?) -> Bool {
         guard let id else { return false }
         return browsers.contains(id)
