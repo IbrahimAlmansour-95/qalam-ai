@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.1 — 2026-09-17
+
+Screen context (reading the text around your cursor from the screen, when Screen Recording is allowed) is now more private and lighter.
+
+- **It no longer reads its own suggestions.** QalamAI's ghost text, mirror bubble, alternatives list and field button were being captured and fed back into the next suggestion as if you'd written them. Now only the window you're typing in is captured.
+- **It only captures the strip around your cursor.** Previously it grabbed the whole display every 2.5 seconds and cropped afterwards; now it captures just that strip, at the same resolution OCR has always used, so it does much less work while you type.
+- **Sensitive content is skipped.** Other apps' windows that happen to sit near your cursor (password managers, notifications, message previews, a banking page in another window) are never captured. Nothing is captured at all when you're typing in a password manager, a password field, Notification Center or Spotlight, or while Secure Input is on. If QalamAI can't tell which window you're in, it captures nothing rather than everything.
+- **Text from one app no longer leaks into another's suggestions** during the 2.5-second cache after you switch apps.
+- **The strip is now in the right place.** It was actually reading mostly *below* your cursor and always from your first display; it now reads the lines above your cursor, on the display you're typing on, and keeps the text nearest the cursor when there's too much.
+- Works in Chrome web apps, where the text field and its window belong to different processes.
+
+Also fixed:
+
+- **Closing the Welcome window no longer leaves it burning CPU.** Closing it with the title-bar button kept its animated background and timers running for as long as QalamAI was open (~25% CPU). It's now fully released when closed (~1.5% idle). It still reopens at launch until setup is finished, as before.
+
 ## 1.4.0 — 2026-09-16
 
 The big stability + capability release. Everything below is off by default unless it says otherwise, and nothing changes how the ghost is placed inline or what Tab, Shift+Tab and Esc already do.
